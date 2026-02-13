@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="NOCREPORTGENERATOR.Pages.DashboardPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid Padding="20">
+        <StackPanel Spacing="12">
+            <TextBlock FontSize="28" FontWeight="SemiBold" Text="Dashboard" />
+            <TextBlock Opacity="0.75" Text="Halaman ini nantinya berisi history TT yang sudah ter-record." />
+
+            <Border Padding="16" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                <TextBlock Text="Belum ada data history TT." />
+            </Border>
+        </StackPanel>
+    </Grid>
+</Page>

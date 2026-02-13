@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="NOCREPORTGENERATOR.Pages.CreateTtPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <ScrollViewer>
+        <Grid Padding="20" RowSpacing="16" ColumnSpacing="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*" />
+                <ColumnDefinition Width="3*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Spacing="12">
+                <TextBlock FontSize="28" FontWeight="SemiBold" Text="Create TT" />
+
+                <TextBox x:Name="TitleTextBox" Header="Tittle" PlaceholderText="Masukkan judul TT" TextChanged="InputChanged" />
+
+                <StackPanel>
+                    <TextBlock Margin="0,0,0,8" Text="Occur Time" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <DatePicker x:Name="OccurDatePicker" DateChanged="OccurDatePicker_DateChanged" />
+                        <TimePicker x:Name="OccurTimePicker" TimeChanged="OccurTimePicker_TimeChanged" />
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Margin="0,0,0,8" Text="Dispacth Time" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <DatePicker x:Name="DispatchDatePicker" DateChanged="DispatchDatePicker_DateChanged" />
+                        <TimePicker x:Name="DispatchTimePicker" TimeChanged="DispatchTimePicker_TimeChanged" />
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBox x:Name="PicTextBox" Header="PIC" PlaceholderText="Contoh: Sangga(Depok)" TextChanged="InputChanged" />
+                <TextBox x:Name="RootCauseTextBox" Header="Rootcause" PlaceholderText="Contoh: Still Investigation" TextChanged="InputChanged" />
+                <TextBox x:Name="CutPointTextBox" Header="Cut Point" PlaceholderText="Isi cut point" TextChanged="InputChanged" />
+                <TextBox x:Name="CoordinateTextBox" Header="Coordinate (DMS)" PlaceholderText="Contoh: 6d12'11.2&quot;S 106d49'37.5&quot;E" TextChanged="InputChanged" />
+                <TextBox x:Name="UpdateProgressTextBox" AcceptsReturn="True" Header="Update Progress" MinHeight="180" PlaceholderText="Masukkan update progress per baris..." TextChanged="InputChanged" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Spacing="12">
+                <TextBlock FontSize="24" FontWeight="SemiBold" Text="Template Preview" />
+                <Border Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
+                    <TextBox x:Name="TemplatePreviewTextBox" AcceptsReturn="True" IsReadOnly="True" MinHeight="620" TextWrapping="Wrap" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </ScrollViewer>
+</Page>
