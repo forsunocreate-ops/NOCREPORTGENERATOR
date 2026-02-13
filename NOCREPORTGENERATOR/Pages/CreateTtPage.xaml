@@ -157,13 +157,13 @@
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <Button Click="DuplicateTabButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8A7;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECD5;" />
                                         <TextBlock Text="Duplicate Tab" />
                                     </StackPanel>
                                 </Button>
                                 <Button Click="LoadMsgButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE715;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEEFA;" />
                                         <TextBlock Text="Load .msg" />
                                     </StackPanel>
                                 </Button>
@@ -192,13 +192,13 @@
                                     Style="{StaticResource ShellInputTextBoxStyle}" />
                                 <Button Grid.Column="1" Click="SaveLocalButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE74E;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0B3;" />
                                         <TextBlock Text="Save" />
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="2" Click="SaveAsLocalButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE792;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0B1;" />
                                         <TextBlock Text="Save As" />
                                     </StackPanel>
                                 </Button>
@@ -218,13 +218,13 @@
                                     Style="{StaticResource ShellInputComboBoxStyle}" />
                                 <Button Grid.Column="1" Click="LoadSavedButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE8A5;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xED70;" />
                                         <TextBlock Text="Load" />
                                     </StackPanel>
                                 </Button>
                                 <Button Grid.Column="2" Click="DeleteSavedButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon Glyph="&#xE74D;" />
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC2A;" />
                                         <TextBlock Text="Delete" />
                                     </StackPanel>
                                 </Button>
@@ -243,7 +243,7 @@
                         DragOver="EmailDropZoneBorder_DragOver"
                         Drop="EmailDropZoneBorder_Drop">
                         <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Foreground="{StaticResource ShellMutedForegroundBrush}" Glyph="&#xE8A5;" />
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Foreground="{StaticResource ShellMutedForegroundBrush}" Glyph="&#xEE4D;" />
                             <TextBlock
                                 Foreground="{StaticResource ShellMutedForegroundBrush}"
                                 Text="Drop file email .msg di sini untuk auto-fill." />
@@ -260,6 +260,20 @@
                                 PlaceholderText="Masukkan judul TT"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />
+
+                            <TextBox
+                                x:Name="TtIohTextBox"
+                                Header="TT IOH"
+                                PlaceholderText="INC-xxxxxxxx-xxxxxxxx"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
+
+                            <ComboBox
+                                x:Name="StatusLinkComboBox"
+                                Header="Status Link"
+                                PlaceholderText="Pilih status link"
+                                SelectionChanged="StatusLinkComboBox_SelectionChanged"
+                                Style="{StaticResource ShellInputComboBoxStyle}" />
 
                             <Grid x:Name="OccurTimePanel" ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
@@ -387,7 +401,7 @@
                 <StackPanel Spacing="10">
                     <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Output" />
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE8A5;" />
+                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xED0F;" />
                         <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Template Preview" />
                     </StackPanel>
                     <Border

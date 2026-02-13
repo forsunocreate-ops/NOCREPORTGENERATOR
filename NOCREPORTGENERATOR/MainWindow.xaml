@@ -37,6 +37,7 @@
                         <Setter Target="DashboardNavText.Visibility" Value="Visible" />
                         <Setter Target="CreateTtNavText.Visibility" Value="Visible" />
                         <Setter Target="LiveMapNavText.Visibility" Value="Visible" />
+                        <Setter Target="HistoryTtNavText.Visibility" Value="Visible" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="CompactState">
@@ -51,67 +52,36 @@
                         <Setter Target="DashboardNavText.Visibility" Value="Collapsed" />
                         <Setter Target="CreateTtNavText.Visibility" Value="Collapsed" />
                         <Setter Target="LiveMapNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="HistoryTtNavText.Visibility" Value="Collapsed" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="52" />
+            <RowDefinition Height="46" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Grid
             x:Name="AppTitleBarDragRegion"
             Grid.Row="0"
-            Padding="16,6,120,8"
+            Padding="12,4,160,4"
             Background="Transparent">
-            <Border
-                VerticalAlignment="Center"
-                Padding="12,8"
-                Background="{StaticResource ShellPanelBackgroundBrush}"
-                BorderBrush="{StaticResource ShellPanelBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="14">
-                <Grid ColumnSpacing="12">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <Border
-                        Width="28"
-                        Height="28"
-                        VerticalAlignment="Center"
-                        Background="#40FFFFFF"
-                        BorderBrush="#55FFFFFF"
-                        BorderThickness="1"
-                        CornerRadius="14">
-                        <Grid>
-                            <materialIcons:MaterialIcon
-                                Width="16"
-                                Height="16"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Foreground="{StaticResource ShellTitleForegroundBrush}"
-                                Kind="NotebookEditOutline" />
-                        </Grid>
-                    </Border>
-
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock
-                            FontSize="13"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource ShellTitleForegroundBrush}"
-                            Text="NOC Report Generator" />
-                        <TextBlock
-                            x:Name="WindowSubtitleTextBlock"
-                            FontSize="11"
-                            Foreground="{StaticResource ShellMutedForegroundBrush}"
-                            Text="Network incident template workspace" />
-                    </StackPanel>
-                </Grid>
-            </Border>
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                <TextBlock
+                    FontSize="20"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource ShellTitleForegroundBrush}"
+                    Text="NOC Report Generator" />
+                <TextBlock
+                    x:Name="WindowSubtitleTextBlock"
+                    Visibility="Collapsed"
+                    FontSize="11"
+                    Foreground="{StaticResource ShellMutedForegroundBrush}"
+                    Text="Network incident template workspace" />
+            </StackPanel>
         </Grid>
 
         <Grid x:Name="ShellContentGrid" Grid.Row="1" Padding="16,10,16,16">
@@ -174,7 +144,7 @@
                                             Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
                                             Text="N" />
                                     </Border>
-                                    <FontIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Glyph="&#xEB51;" />
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Glyph="&#xF181;" />
                                     <Border
                                         x:Name="LottiePulseHost"
                                         Width="22"
@@ -209,7 +179,7 @@
                             Style="{StaticResource ShellNavButtonStyle}"
                             Tag="dashboard">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <fluentIcons:SymbolIcon Symbol="Home" />
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE1D;" />
                                 <TextBlock x:Name="DashboardNavText" Text="Dashboard" />
                             </StackPanel>
                         </Button>
@@ -220,7 +190,7 @@
                             Style="{StaticResource ShellNavButtonStyle}"
                             Tag="create-tt">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <fluentIcons:SymbolIcon Symbol="Edit" />
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFE0;" />
                                 <TextBlock x:Name="CreateTtNavText" Text="Create TT" />
                             </StackPanel>
                         </Button>
@@ -231,8 +201,19 @@
                             Style="{StaticResource ShellNavButtonStyle}"
                             Tag="live-map">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <fluentIcons:SymbolIcon Symbol="Map" />
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF08;" />
                                 <TextBlock x:Name="LiveMapNavText" Text="Live Map" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="HistoryTtNavButton"
+                            Click="NavButton_Click"
+                            Style="{StaticResource ShellNavButtonStyle}"
+                            Tag="history-tt">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE17;" />
+                                <TextBlock x:Name="HistoryTtNavText" Text="History TT" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -256,7 +237,7 @@
                                 Style="{StaticResource ShellSecondaryButtonStyle}"
                                 Visibility="Collapsed">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon Glyph="&#xE721;" />
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECA1;" />
                                     <TextBlock Text="View Error Logs" />
                                 </StackPanel>
                             </Button>
@@ -270,11 +251,12 @@
                 Style="{StaticResource ShellGlassCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition x:Name="ContentHeaderRowDefinition" Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <Border
+                        x:Name="ContentHeaderBorder"
                         Grid.Row="0"
                         Padding="14"
                         Background="{StaticResource ShellHeroGradientBrush}"
@@ -309,6 +291,7 @@
                     </Border>
 
                     <Border
+                        x:Name="ContentHostBorder"
                         Grid.Row="1"
                         Margin="0,14,0,0"
                         Background="{StaticResource ShellPanelSecondaryBackgroundBrush}"
@@ -327,5 +310,48 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <Border
+            x:Name="ImportProgressBorder"
+            Grid.Row="2"
+            Margin="14,0,14,10"
+            Padding="10,8"
+            Background="#CCFFFFFF"
+            BorderBrush="{StaticResource ShellPanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Visibility="Collapsed">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Spacing="4">
+                    <TextBlock
+                        x:Name="ImportProgressTextBlock"
+                        Foreground="{StaticResource ShellTitleForegroundBrush}"
+                        Text="Import TT berjalan..." />
+                    <ProgressBar
+                        x:Name="ImportProgressBar"
+                        Height="8"
+                        IsIndeterminate="True"
+                        Maximum="100"
+                        Minimum="0"
+                        Value="0" />
+                </StackPanel>
+
+                <Button
+                    x:Name="CancelImportButton"
+                    Grid.Column="1"
+                    Click="CancelImportButton_Click"
+                    Style="{StaticResource ShellSecondaryButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB99;" />
+                        <TextBlock Text="Cancel Import" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
     </Grid>
 </winex:WindowEx>

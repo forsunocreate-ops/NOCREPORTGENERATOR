@@ -1,5 +1,7 @@
 using CommunityToolkit.WinUI.Animations;
 using CommunityToolkit.WinUI.Lottie;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -11,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using Windows.ApplicationModel.DataTransfer;
 using WinUIEx;
+using WinRT.Interop;
 
 namespace NOCREPORTGENERATOR
 {
@@ -20,7 +23,8 @@ namespace NOCREPORTGENERATOR
         {
             ["dashboard"] = 0,
             ["create-tt"] = 1,
-            ["live-map"] = 2
+            ["live-map"] = 2,
+            ["history-tt"] = 3
         };
         private string _currentTag = "dashboard";
 
@@ -30,6 +34,7 @@ namespace NOCREPORTGENERATOR
 
             ExtendsContentIntoTitleBar = true;
             SetTitleBar(AppTitleBarDragRegion);
+            ConfigureCaptionButtonsTheme();
 
             Width = 1420;
             Height = 900;
@@ -44,9 +49,13 @@ namespace NOCREPORTGENERATOR
             CreateTtNavButton.PointerExited += NavButton_PointerExited;
             LiveMapNavButton.PointerEntered += NavButton_PointerEntered;
             LiveMapNavButton.PointerExited += NavButton_PointerExited;
+            HistoryTtNavButton.PointerEntered += NavButton_PointerEntered;
+            HistoryTtNavButton.PointerExited += NavButton_PointerExited;
 
             TryInitializeLottiePulse();
             LogUiStackStatus();
+            ImportJobService.StateChanged += ImportJobService_StateChanged;
+            Closed += MainWindow_Closed;
             NavigateTo("dashboard");
         }
 
@@ -66,6 +75,35 @@ namespace NOCREPORTGENERATOR
             catch (Exception ex)
             {
                 DeveloperDiagnostics.LogError("MainWindow.LogUiStackStatus", ex);
+            }
+        }
+
+        private void ConfigureCaptionButtonsTheme()
+        {
+            try
+            {
+                var hWnd = WindowNative.GetWindowHandle(this);
+                var windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+                var appWindow = AppWindow.GetFromWindowId(windowId);
+                var titleBar = appWindow.TitleBar;
+
+                titleBar.BackgroundColor = Colors.Transparent;
+                titleBar.ForegroundColor = ColorHelper.FromArgb(255, 18, 49, 74);
+                titleBar.InactiveBackgroundColor = Colors.Transparent;
+                titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 108, 130, 155);
+
+                titleBar.ButtonBackgroundColor = Colors.Transparent;
+                titleBar.ButtonForegroundColor = ColorHelper.FromArgb(255, 18, 49, 74);
+                titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(90, 47, 129, 199);
+                titleBar.ButtonHoverForegroundColor = ColorHelper.FromArgb(255, 15, 45, 69);
+                titleBar.ButtonPressedBackgroundColor = ColorHelper.FromArgb(130, 42, 132, 207);
+                titleBar.ButtonPressedForegroundColor = Colors.White;
+                titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+                titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 108, 130, 155);
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("MainWindow.ConfigureCaptionButtonsTheme", ex);
             }
         }
 
@@ -103,6 +141,10 @@ namespace NOCREPORTGENERATOR
                     pageType = typeof(LiveMapPage);
                     pageTitle = "Live Map";
                     break;
+                case "history-tt":
+                    pageType = typeof(HistoryTtPage);
+                    pageTitle = "History TT";
+                    break;
                 default:
                     pageType = typeof(DashboardPage);
                     pageTitle = "Dashboard";
@@ -117,8 +159,19 @@ namespace NOCREPORTGENERATOR
 
             CurrentPageTitleTextBlock.Text = pageTitle;
             WindowSubtitleTextBlock.Text = pageTitle + " module";
+            UpdateContentHeaderVisibility(tag);
             UpdateNavSelection(tag);
             _currentTag = tag;
+        }
+
+        private void UpdateContentHeaderVisibility(string tag)
+        {
+            var isLiveMap = string.Equals(tag, "live-map", StringComparison.OrdinalIgnoreCase);
+            ContentHeaderRowDefinition.Height = isLiveMap
+                ? new GridLength(0)
+                : GridLength.Auto;
+            ContentHeaderBorder.Visibility = isLiveMap ? Visibility.Collapsed : Visibility.Visible;
+            ContentHostBorder.Margin = isLiveMap ? new Thickness(0) : new Thickness(0, 14, 0, 0);
         }
 
         private NavigationTransitionInfo BuildNavigationTransition(string nextTag)
@@ -139,6 +192,7 @@ namespace NOCREPORTGENERATOR
             ApplyNavButtonState(DashboardNavButton, "dashboard", selectedTag);
             ApplyNavButtonState(CreateTtNavButton, "create-tt", selectedTag);
             ApplyNavButtonState(LiveMapNavButton, "live-map", selectedTag);
+            ApplyNavButtonState(HistoryTtNavButton, "history-tt", selectedTag);
         }
 
         private void ApplyNavButtonState(Button button, string buttonTag, string selectedTag)
@@ -260,6 +314,44 @@ namespace NOCREPORTGENERATOR
             AnimationBuilder.Create()
                 .Scale(to: 1.0, duration: TimeSpan.FromMilliseconds(150), easingType: EasingType.Cubic)
                 .Start(element);
+        }
+
+        private void ImportJobService_StateChanged(ImportJobState state)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                if (!state.IsActive)
+                {
+                    ImportProgressBorder.Visibility = Visibility.Collapsed;
+                    ImportProgressBar.IsIndeterminate = false;
+                    ImportProgressBar.Value = 0;
+                    ImportProgressTextBlock.Text = string.Empty;
+                    CancelImportButton.IsEnabled = false;
+                    return;
+                }
+
+                ImportProgressBorder.Visibility = Visibility.Visible;
+                ImportProgressTextBlock.Text = state.Message;
+                ImportProgressBar.IsIndeterminate = state.IsIndeterminate;
+                if (!state.IsIndeterminate)
+                {
+                    ImportProgressBar.Value = state.Percent;
+                }
+
+                CancelImportButton.IsEnabled = state.CanCancel;
+            });
+        }
+
+        private void CancelImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            CancelImportButton.IsEnabled = false;
+            ImportProgressTextBlock.Text = "Membatalkan import...";
+            ImportJobService.Cancel();
+        }
+
+        private void MainWindow_Closed(object sender, WindowEventArgs args)
+        {
+            ImportJobService.StateChanged -= ImportJobService_StateChanged;
         }
     }
 }

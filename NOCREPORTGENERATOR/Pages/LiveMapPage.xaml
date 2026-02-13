@@ -33,9 +33,9 @@
                         <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
                         <Setter Target="MapToolbarSecondColumn.Width" Value="Auto" />
                         <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
-                        <Setter Target="MapCenterButton.(Grid.Column)" Value="1" />
+                        <Setter Target="MapActionPanel.(Grid.Column)" Value="1" />
                         <Setter Target="MapSearchBox.(Grid.Row)" Value="0" />
-                        <Setter Target="MapCenterButton.(Grid.Row)" Value="0" />
+                        <Setter Target="MapActionPanel.(Grid.Row)" Value="0" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="LiveMapCompactState">
@@ -47,9 +47,9 @@
                         <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
                         <Setter Target="MapToolbarSecondColumn.Width" Value="0" />
                         <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
-                        <Setter Target="MapCenterButton.(Grid.Column)" Value="0" />
+                        <Setter Target="MapActionPanel.(Grid.Column)" Value="0" />
                         <Setter Target="MapSearchBox.(Grid.Row)" Value="0" />
-                        <Setter Target="MapCenterButton.(Grid.Row)" Value="1" />
+                        <Setter Target="MapActionPanel.(Grid.Row)" Value="1" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
@@ -57,55 +57,15 @@
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border
-            Grid.Row="0"
-            Padding="16"
-            Background="{StaticResource ShellHeroGradientBrush}"
-            BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="16">
-            <Grid ColumnSpacing="10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Mapping Console" />
-                    <TextBlock
-                        FontSize="30"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                        Text="Live Map" />
-                    <TextBlock
-                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                        Text="Pantau cut point dan segment route pada peta OpenStreetMap." />
-                </StackPanel>
-
-                <Border
-                    Grid.Column="1"
-                    Width="64"
-                    Height="64"
-                    Background="#34FFFFFF"
-                    BorderBrush="#55FFFFFF"
-                    BorderThickness="1"
-                    CornerRadius="32">
-                    <FontIcon
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Center"
-                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                        Glyph="&#xE707;" />
-                </Border>
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
+        <Border Grid.Row="0" Style="{StaticResource ShellGlassCardStyle}">
             <Grid ColumnSpacing="10" RowSpacing="10">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
@@ -118,56 +78,168 @@
                     x:Name="MapSearchBox"
                     PlaceholderText="Cari lokasi / koordinat..."
                     QueryIcon="Find"
+                    QuerySubmitted="MapSearchBox_QuerySubmitted"
                     Style="{StaticResource ShellInputAutoSuggestBoxStyle}" />
 
-                <Button
-                    x:Name="MapCenterButton"
+                <StackPanel
+                    x:Name="MapActionPanel"
                     Grid.Column="1"
-                    Style="{StaticResource ShellSecondaryButtonStyle}">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE709;" />
-                        <TextBlock Text="Center to Indonesia" />
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        x:Name="MapCenterButton"
+                        Click="MapCenterButton_Click"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF0A;" />
+                            <TextBlock Text="Center to Indonesia" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+
+                <Grid
+                    Grid.Row="1"
+                    Grid.ColumnSpan="2"
+                    ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        Text="From" />
+                    <CalendarDatePicker
+                        x:Name="FromDatePicker"
+                        Grid.Column="1"
+                        PlaceholderText="Pilih tanggal"
+                        VerticalAlignment="Center"
+                        DateChanged="FromDatePicker_DateChanged" />
+
+                    <TextBlock
+                        Grid.Column="2"
+                        VerticalAlignment="Center"
+                        Text="To" />
+                    <CalendarDatePicker
+                        x:Name="ToDatePicker"
+                        Grid.Column="3"
+                        PlaceholderText="Pilih tanggal"
+                        VerticalAlignment="Center"
+                        DateChanged="ToDatePicker_DateChanged" />
+
+                    <ComboBox
+                        x:Name="StatusFilterComboBox"
+                        Grid.Column="4"
+                        PlaceholderText="Status"
+                        VerticalAlignment="Center"
+                        SelectionChanged="StatusFilterComboBox_SelectionChanged" />
+
+                    <ComboBox
+                        x:Name="SeverityFilterComboBox"
+                        Grid.Column="5"
+                        PlaceholderText="Severity"
+                        VerticalAlignment="Center"
+                        SelectionChanged="SeverityFilterComboBox_SelectionChanged" />
+
+                    <StackPanel
+                        Grid.Column="6"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center">
+                        <TextBlock VerticalAlignment="Center" Text="Heatmap" />
+                        <ToggleSwitch
+                            x:Name="HeatmapToggleSwitch"
+                            Toggled="HeatmapToggleSwitch_Toggled" />
                     </StackPanel>
-                </Button>
+
+                    <Button
+                        x:Name="ExportCsvButton"
+                        Grid.Column="7"
+                        Click="ExportCsvButton_Click"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECD9;" />
+                            <TextBlock Text="Export CSV" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid
+                    Grid.Row="2"
+                    Grid.ColumnSpan="2"
+                    ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="220" />
+                        <ColumnDefinition Width="180" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <AutoSuggestBox
+                        x:Name="SmartFilterAutoSuggestBox"
+                        Grid.Column="0"
+                        PlaceholderText="Smart filter: tt:INC-..., seg:jakarta, cp:otdr, from:2026-02-01 to:2026-02-13"
+                        QuerySubmitted="SmartFilterAutoSuggestBox_QuerySubmitted"
+                        SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
+                        TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
+
+                    <ComboBox
+                        x:Name="SegmentRouteFilterComboBox"
+                        Grid.Column="1"
+                        IsEditable="True"
+                        IsTextSearchEnabled="True"
+                        PlaceholderText="Segment Route"
+                        SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
+
+                    <ComboBox
+                        x:Name="QuickFilterComboBox"
+                        Grid.Column="2"
+                        SelectionChanged="QuickFilterComboBox_SelectionChanged" />
+
+                    <Button
+                        x:Name="ApplyFilterButton"
+                        Grid.Column="3"
+                        Click="ApplyFilterButton_Click"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <TextBlock Text="Apply Filter" />
+                    </Button>
+
+                    <Button
+                        x:Name="ClearFilterButton"
+                        Grid.Column="4"
+                        Click="ClearFilterButton_Click"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <TextBlock Text="Clear" />
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    x:Name="MapFilterSummaryTextBlock"
+                    Grid.Row="4"
+                    Grid.ColumnSpan="2"
+                    Style="{StaticResource ShellSectionCaptionStyle}"
+                    Text="0 marker tampil" />
             </Grid>
         </Border>
 
         <Border
-            Grid.Row="2"
+            Grid.Row="1"
             Padding="8"
             Style="{StaticResource ShellGlassCardStyle}">
-            <Grid RowSpacing="8">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <Grid ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ProgressBar Height="8" IsIndeterminate="True" ShowError="False" ShowPaused="False" Value="50" />
-                    <Border
-                        Grid.Column="1"
-                        Padding="8,4"
-                        Background="#7FFFFFFF"
-                        BorderBrush="{StaticResource ShellPanelBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="10">
-                        <TextBlock
-                            Foreground="{StaticResource ShellMutedForegroundBrush}"
-                            Text="OpenStreetMap View" />
-                    </Border>
-                </Grid>
-
-                <Border
-                    Grid.Row="1"
-                    Padding="6"
-                    Style="{StaticResource ShellGlassSubtleCardStyle}">
-                    <WebView2 Source="https://www.openstreetmap.org" />
-                </Border>
-            </Grid>
+            <Border
+                Padding="6"
+                Style="{StaticResource ShellGlassSubtleCardStyle}">
+                <WebView2 x:Name="MapWebView" />
+            </Border>
         </Border>
     </Grid>
 </Page>

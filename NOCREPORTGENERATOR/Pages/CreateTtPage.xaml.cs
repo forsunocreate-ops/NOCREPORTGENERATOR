@@ -24,6 +24,8 @@ namespace NOCREPORTGENERATOR.Pages
     public sealed partial class CreateTtPage : Page
     {
         private const string DateTimeInputFormat = "dd-MM-yyyy HH:mm";
+        private const int MaxSavedFormsInCombo = 1000;
+        private static readonly Regex TtIohRegex = new(@"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private CancellationTokenSource? _systemKeyLookupCts;
         private Dictionary<string, IReadOnlyList<string>> _picBySegmentRoute = new(StringComparer.OrdinalIgnoreCase);
         private List<string> _allSegmentRoutes = new();
@@ -39,6 +41,10 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isSwitchingTabs;
         private bool _isHandlingTabSelectionChanged;
         private bool _pendingTabRefresh;
+        private bool _isUpdatingTtIohText;
+        private bool _statusLinkOptionsLoaded;
+        private List<string> _statusLinkOptions = new();
+        private string _pendingStatusLink = string.Empty;
 
         public CreateTtPage()
         {
@@ -53,6 +59,7 @@ namespace NOCREPORTGENERATOR.Pages
             UpdateTemplatePreview();
             _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
             _ = EnsureAllPicOptionsLoadedAsync();
+            _ = EnsureStatusLinkOptionsLoadedAsync();
             _ = RefreshSavedFormsAsync();
         }
 
@@ -266,9 +273,11 @@ namespace NOCREPORTGENERATOR.Pages
                 Header = source.Header,
                 IsHeaderManuallyEdited = source.IsHeaderManuallyEdited,
                 IsDirty = source.IsDirty,
+                TtIoh = source.TtIoh,
                 Title = source.Title,
                 OccurDateTime = source.OccurDateTime,
                 DispatchDateTime = source.DispatchDateTime,
+                StatusLink = source.StatusLink,
                 Pic = source.Pic,
                 RootCause = source.RootCause,
                 CutPoint = source.CutPoint,
@@ -830,9 +839,11 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 Name = draftName,
                 SavedAt = DateTimeOffset.Now,
+                TtIoh = GetEffectiveTtIoh(),
                 Title = TitleTextBox.Text?.Trim() ?? string.Empty,
                 OccurDateTime = occur,
                 DispatchDateTime = dispatch,
+                StatusLink = GetSelectedStatusLink(),
                 Pic = PicAutoSuggestBox.Text?.Trim() ?? string.Empty,
                 RootCause = RootCauseTextBox.Text?.Trim() ?? string.Empty,
                 CutPoint = CutPointTextBox.Text?.Trim() ?? string.Empty,
@@ -924,6 +935,24 @@ namespace NOCREPORTGENERATOR.Pages
             if (!string.IsNullOrWhiteSpace(subject))
             {
                 TitleTextBox.Text = subject.Trim();
+                TryAutoParseTtIoh(subject);
+            }
+
+            var ttIohFromBody = ExtractLineValue(body, "TT IOH");
+            if (string.IsNullOrWhiteSpace(ttIohFromBody))
+            {
+                ttIohFromBody = ExtractLineValue(body, "TT");
+            }
+
+            var parsedTtIoh = NormalizeTtIoh(ttIohFromBody);
+            if (string.IsNullOrWhiteSpace(parsedTtIoh))
+            {
+                parsedTtIoh = ExtractTtIoh(subject);
+            }
+
+            if (!string.IsNullOrWhiteSpace(parsedTtIoh))
+            {
+                TtIohTextBox.Text = parsedTtIoh;
             }
 
             var occurLine = ExtractLineValue(body, "Occur Time");
@@ -938,6 +967,7 @@ namespace NOCREPORTGENERATOR.Pages
                 DispatchTimeTextBox.Text = FormatDateTime(dispatchDate.Value);
             }
 
+            ApplyStatusLinkSelection("Open");
             RootCauseTextBox.Text = string.Empty;
             CutPointTextBox.Text = string.Empty;
             PicAutoSuggestBox.Text = string.Empty;
@@ -1034,6 +1064,13 @@ namespace NOCREPORTGENERATOR.Pages
 
             if (ReferenceEquals(sender, TitleTextBox))
             {
+                TryAutoParseTtIoh(TitleTextBox.Text);
+                UpdateActiveTabHeaderFromCurrentForm();
+            }
+
+            if (ReferenceEquals(sender, TtIohTextBox))
+            {
+                NormalizeTtIohInput();
                 UpdateActiveTabHeaderFromCurrentForm();
             }
 
@@ -1043,6 +1080,93 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             MarkActiveTabDirty();
+        }
+
+        private void TryAutoParseTtIoh(string? source)
+        {
+            if (_isApplyingSavedForm || _isUpdatingTtIohText)
+            {
+                return;
+            }
+
+            var parsed = ExtractTtIoh(source);
+            if (string.IsNullOrWhiteSpace(parsed))
+            {
+                return;
+            }
+
+            if (string.Equals(TtIohTextBox.Text?.Trim(), parsed, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _isUpdatingTtIohText = true;
+            try
+            {
+                TtIohTextBox.Text = parsed;
+            }
+            finally
+            {
+                _isUpdatingTtIohText = false;
+            }
+        }
+
+        private void NormalizeTtIohInput()
+        {
+            if (_isUpdatingTtIohText)
+            {
+                return;
+            }
+
+            var normalized = NormalizeTtIoh(TtIohTextBox.Text);
+            var current = TtIohTextBox.Text?.Trim() ?? string.Empty;
+            if (string.Equals(current, normalized, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            _isUpdatingTtIohText = true;
+            try
+            {
+                TtIohTextBox.Text = normalized;
+            }
+            finally
+            {
+                _isUpdatingTtIohText = false;
+            }
+        }
+
+        private string GetEffectiveTtIoh()
+        {
+            var normalized = NormalizeTtIoh(TtIohTextBox.Text);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                return normalized;
+            }
+
+            return ExtractTtIoh(TitleTextBox.Text);
+        }
+
+        private static string NormalizeTtIoh(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var trimmed = value.Trim().ToUpperInvariant();
+            return TtIohRegex.IsMatch(trimmed) ? trimmed : string.Empty;
+        }
+
+        private static string ExtractTtIoh(string? source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return string.Empty;
+            }
+
+            var match = TtIohRegex.Match(source);
+            return match.Success ? match.Value.ToUpperInvariant() : string.Empty;
         }
 
         private void DateTimeTextBox_LostFocus(object sender, RoutedEventArgs e)
@@ -1202,6 +1326,17 @@ namespace NOCREPORTGENERATOR.Pages
             MarkActiveTabDirty();
         }
 
+        private void StatusLinkComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isApplyingSavedForm)
+            {
+                return;
+            }
+
+            UpdateTemplatePreview();
+            MarkActiveTabDirty();
+        }
+
         private void UpdateTemplatePreview()
         {
             if (TemplatePreviewTextBox is null)
@@ -1210,6 +1345,8 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             var title = string.IsNullOrWhiteSpace(TitleTextBox?.Text) ? "Judul TT" : TitleTextBox.Text.Trim();
+            var ttIoh = NormalizeTtIoh(TtIohTextBox?.Text);
+            var statusLink = GetSelectedStatusLink();
             var occurTime = GetDateTimePreviewValue(OccurTimeTextBox?.Text, DateTimeOffset.Now);
             var dispatchTime = GetDateTimePreviewValue(DispatchTimeTextBox?.Text, DateTimeOffset.Now);
             var pic = PicAutoSuggestBox?.Text?.Trim() ?? string.Empty;
@@ -1223,6 +1360,8 @@ namespace NOCREPORTGENERATOR.Pages
             var showSystemKey = ShowSystemKeyToggleSwitch?.IsOn ?? true;
 
             var preview = "*" + title + "*" + Environment.NewLine +
+                (string.IsNullOrWhiteSpace(ttIoh) ? string.Empty : "TT IOH = " + ttIoh + Environment.NewLine) +
+                (string.IsNullOrWhiteSpace(statusLink) ? string.Empty : "Status Link = " + statusLink + Environment.NewLine) +
                 "Occur Time = " + occurTime + Environment.NewLine +
                 "Dispacth Time = " + dispatchTime + Environment.NewLine +
                 "PIC = " + pic + Environment.NewLine +
@@ -1407,9 +1546,11 @@ namespace NOCREPORTGENERATOR.Pages
 
             return new FormTabState
             {
+                TtIoh = GetEffectiveTtIoh(),
                 Title = TitleTextBox.Text?.Trim() ?? string.Empty,
                 OccurDateTime = occur,
                 DispatchDateTime = dispatch,
+                StatusLink = GetSelectedStatusLink(),
                 Pic = PicAutoSuggestBox.Text?.Trim() ?? string.Empty,
                 RootCause = RootCauseTextBox.Text?.Trim() ?? string.Empty,
                 CutPoint = CutPointTextBox.Text?.Trim() ?? string.Empty,
@@ -1430,9 +1571,13 @@ namespace NOCREPORTGENERATOR.Pages
             _isApplyingSavedForm = true;
             try
             {
+                TtIohTextBox.Text = string.IsNullOrWhiteSpace(state.TtIoh)
+                    ? ExtractTtIoh(state.Title)
+                    : NormalizeTtIoh(state.TtIoh);
                 TitleTextBox.Text = state.Title;
                 OccurTimeTextBox.Text = FormatDateTime(state.OccurDateTime);
                 DispatchTimeTextBox.Text = FormatDateTime(state.DispatchDateTime);
+                ApplyStatusLinkSelection(state.StatusLink);
                 PicAutoSuggestBox.Text = state.Pic;
                 RootCauseTextBox.Text = state.RootCause;
                 CutPointTextBox.Text = state.CutPoint;
@@ -1463,10 +1608,11 @@ namespace NOCREPORTGENERATOR.Pages
 
             if (_tabStates.TryGetValue(_activeTabId, out var state))
             {
+                state.TtIoh = GetEffectiveTtIoh();
                 state.Title = TitleTextBox.Text?.Trim() ?? string.Empty;
                 if (!state.IsHeaderManuallyEdited)
                 {
-                    state.Header = ResolveTabHeader(state.Header, state.Title);
+                    state.Header = ResolveTabHeader(state.Header, state.TtIoh, state.Title);
                 }
 
                 _tabStates[_activeTabId] = state;
@@ -1485,7 +1631,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 if (!existing.IsHeaderManuallyEdited)
                 {
-                    existing.Header = ResolveTabHeader(existing.Header, existing.Title);
+                    existing.Header = ResolveTabHeader(existing.Header, existing.TtIoh, existing.Title);
                 }
 
                 _tabStates[state.TabId] = existing;
@@ -1495,14 +1641,19 @@ namespace NOCREPORTGENERATOR.Pages
             RefreshTabOptions();
         }
 
-        private static string ResolveTabHeader(string currentHeader, string title)
+        private static string ResolveTabHeader(string currentHeader, string ttIoh, string title)
         {
+            if (!string.IsNullOrWhiteSpace(ttIoh))
+            {
+                return ttIoh;
+            }
+
             if (!string.IsNullOrWhiteSpace(title))
             {
-                var match = Regex.Match(title, @"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase);
-                if (match.Success)
+                var parsed = ExtractTtIoh(title);
+                if (!string.IsNullOrWhiteSpace(parsed))
                 {
-                    return match.Value.ToUpperInvariant();
+                    return parsed;
                 }
             }
 
@@ -1611,13 +1762,113 @@ namespace NOCREPORTGENERATOR.Pages
             _isPopulatingSegmentOptions = false;
         }
 
+        private async Task EnsureStatusLinkOptionsLoadedAsync()
+        {
+            if (_statusLinkOptionsLoaded)
+            {
+                return;
+            }
+
+            try
+            {
+                var options = await StatusLinkLookupService.GetStatusLinkOptionsAsync();
+                _statusLinkOptions = options.ToList();
+                if (_statusLinkOptions.Count == 0)
+                {
+                    _statusLinkOptions = new List<string> { "Open", "Closed", "Cancel" };
+                }
+
+                StatusLinkComboBox.ItemsSource = _statusLinkOptions;
+                _statusLinkOptionsLoaded = true;
+
+                var desired = string.IsNullOrWhiteSpace(_pendingStatusLink) ? "Open" : _pendingStatusLink;
+                _pendingStatusLink = string.Empty;
+                ApplyStatusLinkSelection(desired);
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.EnsureStatusLinkOptionsLoadedAsync", ex);
+                _statusLinkOptions = new List<string> { "Open", "Closed", "Cancel" };
+                StatusLinkComboBox.ItemsSource = _statusLinkOptions;
+                _statusLinkOptionsLoaded = true;
+                ApplyStatusLinkSelection("Open");
+            }
+        }
+
+        private string GetSelectedStatusLink()
+        {
+            if (StatusLinkComboBox.SelectedItem is string selected)
+            {
+                return NormalizeStatusLink(selected);
+            }
+
+            return NormalizeStatusLink(StatusLinkComboBox.Text);
+        }
+
+        private void ApplyStatusLinkSelection(string? value)
+        {
+            var normalized = NormalizeStatusLink(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                normalized = "Open";
+            }
+
+            if (!_statusLinkOptionsLoaded)
+            {
+                _pendingStatusLink = normalized;
+                _ = EnsureStatusLinkOptionsLoadedAsync();
+                return;
+            }
+
+            if (!_statusLinkOptions.Any(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase)))
+            {
+                _statusLinkOptions.Add(normalized);
+                StatusLinkComboBox.ItemsSource = null;
+                StatusLinkComboBox.ItemsSource = _statusLinkOptions;
+            }
+
+            var matched = _statusLinkOptions.FirstOrDefault(x => string.Equals(x, normalized, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(matched))
+            {
+                StatusLinkComboBox.SelectedItem = matched;
+            }
+        }
+
+        private static string NormalizeStatusLink(string? value)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            if (string.Equals(text, "open", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Open";
+            }
+
+            if (string.Equals(text, "close", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(text, "closed", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Closed";
+            }
+
+            if (string.Equals(text, "cancel", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(text, "cancelled", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Cancel";
+            }
+
+            return text;
+        }
+
         private async Task RefreshSavedFormsAsync(string? preferredSelectedId = null)
         {
             try
             {
                 var currentSelectedId = (SavedFormsComboBox.SelectedItem as LocalFormRecord)?.Id;
                 var data = await LocalFormStorageService.GetAllAsync();
-                _savedForms = data.ToList();
+                _savedForms = data.Take(MaxSavedFormsInCombo).ToList();
                 SavedFormsComboBox.ItemsSource = _savedForms;
 
                 var targetId = !string.IsNullOrWhiteSpace(preferredSelectedId) ? preferredSelectedId : currentSelectedId;
@@ -1641,9 +1892,13 @@ namespace NOCREPORTGENERATOR.Pages
             _isApplyingSavedForm = true;
             try
             {
+                TtIohTextBox.Text = string.IsNullOrWhiteSpace(record.TtIoh)
+                    ? ExtractTtIoh(record.Title)
+                    : NormalizeTtIoh(record.TtIoh);
                 TitleTextBox.Text = record.Title;
                 OccurTimeTextBox.Text = FormatDateTime(record.OccurDateTime);
                 DispatchTimeTextBox.Text = FormatDateTime(record.DispatchDateTime);
+                ApplyStatusLinkSelection(record.StatusLink);
                 RootCauseTextBox.Text = record.RootCause;
                 CutPointTextBox.Text = record.CutPoint;
                 ShowSegmentRouteToggleSwitch.IsOn = record.ShowSegmentRoute;
@@ -1732,7 +1987,9 @@ namespace NOCREPORTGENERATOR.Pages
         private static bool HasTabContent(FormTabState state)
         {
             return
+                !string.IsNullOrWhiteSpace(state.TtIoh) ||
                 !string.IsNullOrWhiteSpace(state.Title) ||
+                !string.IsNullOrWhiteSpace(state.StatusLink) ||
                 !string.IsNullOrWhiteSpace(state.Pic) ||
                 !string.IsNullOrWhiteSpace(state.RootCause) ||
                 !string.IsNullOrWhiteSpace(state.CutPoint) ||
@@ -1753,9 +2010,11 @@ namespace NOCREPORTGENERATOR.Pages
             public string DraftName { get; set; } = string.Empty;
             public string SavedRecordId { get; set; } = string.Empty;
             public string SavedRecordName { get; set; } = string.Empty;
+            public string TtIoh { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
             public DateTimeOffset OccurDateTime { get; set; }
             public DateTimeOffset DispatchDateTime { get; set; }
+            public string StatusLink { get; set; } = string.Empty;
             public string Pic { get; set; } = string.Empty;
             public string RootCause { get; set; } = string.Empty;
             public string CutPoint { get; set; } = string.Empty;

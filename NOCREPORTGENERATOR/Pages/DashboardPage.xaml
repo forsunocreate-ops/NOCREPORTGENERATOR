@@ -262,7 +262,7 @@
                         Click="RefreshButton_Click"
                         Style="{StaticResource ShellSecondaryButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE72C;" />
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
                             <TextBlock Text="Refresh" />
                         </StackPanel>
                     </Button>
@@ -274,7 +274,7 @@
                         IsEnabled="False"
                         Style="{StaticResource ShellPrimaryButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon Glyph="&#xE8A5;" />
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC80;" />
                             <TextBlock Text="Open in Create TT" />
                         </StackPanel>
                     </Button>
@@ -337,7 +337,7 @@
                             HorizontalAlignment="Left"
                             Style="{StaticResource ShellSecondaryButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8C8;" />
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB91;" />
                                 <TextBlock Text="Copy Template" />
                             </StackPanel>
                         </Button>

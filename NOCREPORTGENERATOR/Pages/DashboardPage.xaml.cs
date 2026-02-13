@@ -24,6 +24,7 @@ namespace NOCREPORTGENERATOR.Pages
 {
     public sealed partial class DashboardPage : Page, INotifyPropertyChanged
     {
+        private const int MaxHistoryListItems = 1000;
         private readonly List<LocalFormRecord> _allRecords = new();
         private readonly List<DashboardHistoryItem> _filteredItems = new();
         private DashboardHistoryItem? _selectedItem;
@@ -193,10 +194,14 @@ namespace NOCREPORTGENERATOR.Pages
             UpdateCharts(filteredRecords);
 
             _filteredItems.Clear();
-            _filteredItems.AddRange(filteredRecords.Select(ToHistoryItem));
+            _filteredItems.AddRange(filteredRecords
+                .Take(MaxHistoryListItems)
+                .Select(ToHistoryItem));
             HistoryListView.ItemsSource = null;
             HistoryListView.ItemsSource = _filteredItems;
-            HistoryCountTextBlock.Text = _filteredItems.Count + " item";
+            HistoryCountTextBlock.Text = filteredRecords.Count > MaxHistoryListItems
+                ? _filteredItems.Count + " / " + filteredRecords.Count + " item"
+                : _filteredItems.Count + " item";
 
             if (_filteredItems.Count == 0)
             {

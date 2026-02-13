@@ -48,6 +48,7 @@
             <SolidColorBrush x:Key="ShellHeroCaptionTextBrush" Color="#CEE7FAFF" />
             <SolidColorBrush x:Key="ShellNeonAccentBrush" Color="#FF6FC7FF" />
             <SolidColorBrush x:Key="ShellDangerBrush" Color="#FFBE3A3A" />
+            <FontFamily x:Key="RemixIconFontFamily">ms-appx:///Assets/Fonts/remixicon.ttf#remixicon</FontFamily>
 
             <Style x:Key="ShellGlassCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource ShellPanelBackgroundBrush}" />

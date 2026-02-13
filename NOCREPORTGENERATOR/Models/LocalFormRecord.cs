@@ -9,9 +9,11 @@ namespace NOCREPORTGENERATOR.Models
         public string Name { get; set; } = string.Empty;
         public DateTimeOffset SavedAt { get; set; } = DateTimeOffset.Now;
 
+        public string TtIoh { get; set; } = string.Empty;
         public string Title { get; set; } = string.Empty;
         public DateTimeOffset OccurDateTime { get; set; }
         public DateTimeOffset DispatchDateTime { get; set; }
+        public string StatusLink { get; set; } = string.Empty;
         public string Pic { get; set; } = string.Empty;
         public string RootCause { get; set; } = string.Empty;
         public string CutPoint { get; set; } = string.Empty;
