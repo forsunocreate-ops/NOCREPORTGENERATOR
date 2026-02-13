@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Streams;
 using WinRT.Interop;
 
 namespace NOCREPORTGENERATOR.Pages
@@ -26,7 +27,9 @@ namespace NOCREPORTGENERATOR.Pages
         private const string DateTimeInputFormat = "dd-MM-yyyy HH:mm";
         private const int MaxSavedFormsInCombo = 1000;
         private static readonly Regex TtIohRegex = new(@"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly HashSet<string> ImageFileExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".heic" };
         private CancellationTokenSource? _systemKeyLookupCts;
+        private CancellationTokenSource? _coordinateImageParseCts;
         private Dictionary<string, IReadOnlyList<string>> _picBySegmentRoute = new(StringComparer.OrdinalIgnoreCase);
         private List<string> _allSegmentRoutes = new();
         private List<string> _allPicOptions = new();
@@ -44,6 +47,8 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isUpdatingTtIohText;
         private bool _statusLinkOptionsLoaded;
         private List<string> _statusLinkOptions = new();
+        private readonly List<ImpactListItem> _impactListItems = new();
+        private static readonly IReadOnlyList<string> ImpactStatusOptions = new[] { "Down ❌", "Up ✅", "Cancel ⛔" };
         private string _pendingStatusLink = string.Empty;
 
         public CreateTtPage()
@@ -56,6 +61,10 @@ namespace NOCREPORTGENERATOR.Pages
             DispatchTimeTextBox.Text = FormatDateTime(now);
 
             InitializeTabs();
+            RefreshImpactListUi();
+            SetCoordinatePhotoStatus(string.IsNullOrWhiteSpace(AppSettingsService.GetGeminiApiKey())
+                ? "API key Gemini belum diisi. Isi di halaman Settings."
+                : "Siap proses foto coordinate dengan Gemini AI.");
             UpdateTemplatePreview();
             _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
             _ = EnsureAllPicOptionsLoadedAsync();
@@ -287,7 +296,8 @@ namespace NOCREPORTGENERATOR.Pages
                 SystemKey = source.SystemKey,
                 Coordinate = source.Coordinate,
                 UpdateProgress = source.UpdateProgress,
-                DraftName = source.DraftName
+                DraftName = source.DraftName,
+                ImpactList = CloneImpactList(source.ImpactList)
             };
         }
 
@@ -676,6 +686,109 @@ namespace NOCREPORTGENERATOR.Pages
             }
         }
 
+        private void CoordinatePhotoDropZoneBorder_DragOver(object sender, DragEventArgs e)
+        {
+            e.AcceptedOperation = DataPackageOperation.Copy;
+        }
+
+        private async void CoordinatePhotoDropZoneBorder_Drop(object sender, DragEventArgs e)
+        {
+            try
+            {
+                if (!e.DataView.Contains(StandardDataFormats.StorageItems))
+                {
+                    SetCoordinatePhotoStatus("Drop file gambar tidak valid.");
+                    return;
+                }
+
+                var items = await e.DataView.GetStorageItemsAsync();
+                var file = items
+                    .OfType<StorageFile>()
+                    .FirstOrDefault(IsImageFile);
+                if (file is null)
+                {
+                    SetCoordinatePhotoStatus("File gambar tidak ditemukan pada drop.");
+                    return;
+                }
+
+                await ProcessCoordinateImageFromStorageFileAsync(file);
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.CoordinatePhotoDropZoneBorder_Drop", ex);
+                SetCoordinatePhotoStatus("Gagal proses drop foto: " + ex.Message);
+            }
+        }
+
+        private async void LoadCoordinatePhotoButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var picker = new FileOpenPicker();
+                picker.FileTypeFilter.Add(".jpg");
+                picker.FileTypeFilter.Add(".jpeg");
+                picker.FileTypeFilter.Add(".png");
+                picker.FileTypeFilter.Add(".bmp");
+                picker.FileTypeFilter.Add(".webp");
+                picker.FileTypeFilter.Add(".heic");
+
+                if (App.MainAppWindow is null)
+                {
+                    SetCoordinatePhotoStatus("Window utama tidak tersedia.");
+                    return;
+                }
+
+                var hWnd = WindowNative.GetWindowHandle(App.MainAppWindow);
+                InitializeWithWindow.Initialize(picker, hWnd);
+                var selectedFile = await picker.PickSingleFileAsync();
+                if (selectedFile is null)
+                {
+                    return;
+                }
+
+                await ProcessCoordinateImageFromStorageFileAsync(selectedFile);
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.LoadCoordinatePhotoButton_Click", ex);
+                SetCoordinatePhotoStatus("Gagal load foto: " + ex.Message);
+            }
+        }
+
+        private async void PasteCoordinatePhotoButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var content = Clipboard.GetContent();
+                if (!content.Contains(StandardDataFormats.Bitmap))
+                {
+                    SetCoordinatePhotoStatus("Clipboard tidak berisi gambar.");
+                    return;
+                }
+
+                var bitmap = await content.GetBitmapAsync();
+                if (bitmap is null)
+                {
+                    SetCoordinatePhotoStatus("Gambar clipboard tidak ditemukan.");
+                    return;
+                }
+
+                var bytes = await ReadAllBytesAsync(bitmap);
+                if (bytes.Length == 0)
+                {
+                    SetCoordinatePhotoStatus("Gambar clipboard kosong.");
+                    return;
+                }
+
+                await ProcessCoordinateImageBytesAsync(bytes, "image/png", "clipboard");
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.PasteCoordinatePhotoButton_Click", ex);
+                SetCoordinatePhotoStatus("Gagal paste gambar: " + ex.Message);
+            }
+        }
+
         private async Task LoadMsgFromStorageFileAsync(StorageFile selectedFile)
         {
             DeveloperDiagnostics.LogInfo("MSG selected: " + selectedFile.Name);
@@ -690,6 +803,106 @@ namespace NOCREPORTGENERATOR.Pages
             FillFormFromMessage(message, selectedFile.Name);
             SetMsgStatus("Loaded: " + selectedFile.Name);
             DeveloperDiagnostics.LogInfo("MSG loaded: " + selectedFile.Name);
+        }
+
+        private async Task ProcessCoordinateImageFromStorageFileAsync(StorageFile file)
+        {
+            if (!IsImageFile(file))
+            {
+                SetCoordinatePhotoStatus("Format file tidak didukung.");
+                return;
+            }
+
+            var bytes = await ReadAllBytesAsync(file);
+            if (bytes.Length == 0)
+            {
+                SetCoordinatePhotoStatus("File gambar kosong.");
+                return;
+            }
+
+            var mimeType = ToMimeType(file.FileType);
+            await ProcessCoordinateImageBytesAsync(bytes, mimeType, file.Name);
+        }
+
+        private async Task ProcessCoordinateImageBytesAsync(byte[] bytes, string mimeType, string source)
+        {
+            _coordinateImageParseCts?.Cancel();
+            _coordinateImageParseCts = new CancellationTokenSource();
+            var token = _coordinateImageParseCts.Token;
+
+            SetCoordinatePhotoStatus("AI parsing coordinate dari " + source + "...");
+            try
+            {
+                var result = await GeminiCoordinateParserService.ExtractDmsCoordinateFromImageAsync(bytes, mimeType, token);
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                if (!result.IsSuccess)
+                {
+                    SetCoordinatePhotoStatus(result.Message);
+                    return;
+                }
+
+                CoordinateTextBox.Text = result.CoordinateDms;
+                SetCoordinatePhotoStatus("Coordinate berhasil diparsing AI: " + result.CoordinateDms);
+                UpdateTemplatePreview();
+                MarkActiveTabDirty();
+            }
+            catch (TaskCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.ProcessCoordinateImageBytesAsync", ex);
+                SetCoordinatePhotoStatus("Gagal parsing AI coordinate: " + ex.Message);
+            }
+        }
+
+        private static async Task<byte[]> ReadAllBytesAsync(StorageFile file)
+        {
+            var buffer = await FileIO.ReadBufferAsync(file);
+            var bytes = new byte[buffer.Length];
+            using var reader = DataReader.FromBuffer(buffer);
+            reader.ReadBytes(bytes);
+            return bytes;
+        }
+
+        private static async Task<byte[]> ReadAllBytesAsync(RandomAccessStreamReference streamReference)
+        {
+            using var stream = await streamReference.OpenReadAsync();
+            var size = (uint)stream.Size;
+            var bytes = new byte[size];
+            using var reader = new DataReader(stream);
+            await reader.LoadAsync(size);
+            reader.ReadBytes(bytes);
+            return bytes;
+        }
+
+        private static bool IsImageFile(StorageFile file)
+        {
+            return file is not null && ImageFileExtensions.Contains(file.FileType);
+        }
+
+        private static string ToMimeType(string extension)
+        {
+            return extension.ToLowerInvariant() switch
+            {
+                ".png" => "image/png",
+                ".bmp" => "image/bmp",
+                ".webp" => "image/webp",
+                ".heic" => "image/heic",
+                _ => "image/jpeg"
+            };
+        }
+
+        private void SetCoordinatePhotoStatus(string text)
+        {
+            if (CoordinatePhotoStatusTextBlock is not null)
+            {
+                CoordinatePhotoStatusTextBlock.Text = text;
+            }
         }
 
         private async void SaveLocalButton_Click(object sender, RoutedEventArgs e)
@@ -852,7 +1065,8 @@ namespace NOCREPORTGENERATOR.Pages
                 SegmentRoute = GetSelectedSegmentRoute(),
                 SystemKey = SystemKeyTextBox.Text?.Trim() ?? string.Empty,
                 Coordinate = CoordinateTextBox.Text?.Trim() ?? string.Empty,
-                UpdateProgress = UpdateProgressTextBox.Text?.Trim() ?? string.Empty
+                UpdateProgress = UpdateProgressTextBox.Text?.Trim() ?? string.Empty,
+                ImpactList = CloneImpactList(_impactListItems)
             };
         }
 
@@ -988,6 +1202,8 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             UpdateProgressTextBox.Text = string.Empty;
+            _impactListItems.Clear();
+            RefreshImpactListUi();
             UpdateTemplatePreview();
         }
 
@@ -1337,6 +1553,225 @@ namespace NOCREPORTGENERATOR.Pages
             MarkActiveTabDirty();
         }
 
+        private void AddImpactListButton_Click(object sender, RoutedEventArgs e)
+        {
+            _impactListItems.Add(new ImpactListItem
+            {
+                Impact = string.Empty,
+                StatusLink = "Down"
+            });
+
+            RefreshImpactListUi();
+            UpdateTemplatePreview();
+            MarkActiveTabDirty();
+        }
+
+        private void RefreshImpactListUi()
+        {
+            if (ImpactListItemsHost is null)
+            {
+                return;
+            }
+
+            ImpactListItemsHost.Children.Clear();
+            for (var i = 0; i < _impactListItems.Count; i++)
+            {
+                var rowItem = _impactListItems[i];
+                var row = new Grid { ColumnSpacing = 8 };
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var impactTextBox = new TextBox
+                {
+                    PlaceholderText = "Contoh Impact",
+                    Text = rowItem.Impact ?? string.Empty,
+                    Style = (Style)Application.Current.Resources["ShellInputTextBoxStyle"]
+                };
+                impactTextBox.TextChanged += (_, _) =>
+                {
+                    rowItem.Impact = impactTextBox.Text?.Trim() ?? string.Empty;
+                    UpdateTemplatePreview();
+                    if (!_isApplyingSavedForm)
+                    {
+                        MarkActiveTabDirty();
+                    }
+                };
+                Grid.SetColumn(impactTextBox, 0);
+                row.Children.Add(impactTextBox);
+
+                var statusComboBox = new ComboBox
+                {
+                    MinWidth = 120,
+                    PlaceholderText = "Status",
+                    ItemsSource = ImpactStatusOptions,
+                    Style = (Style)Application.Current.Resources["ShellInputComboBoxStyle"]
+                };
+                statusComboBox.SelectedItem = ToImpactStatusOptionLabel(NormalizeImpactStatus(rowItem.StatusLink));
+                statusComboBox.SelectionChanged += (_, _) =>
+                {
+                    rowItem.StatusLink = NormalizeImpactStatus(statusComboBox.SelectedItem as string ?? statusComboBox.Text);
+                    UpdateTemplatePreview();
+                    if (!_isApplyingSavedForm)
+                    {
+                        MarkActiveTabDirty();
+                    }
+                };
+                Grid.SetColumn(statusComboBox, 1);
+                row.Children.Add(statusComboBox);
+
+                var removeButton = new Button
+                {
+                    Content = "Hapus",
+                    Style = (Style)Application.Current.Resources["ShellSecondaryButtonStyle"]
+                };
+                removeButton.Click += (_, _) =>
+                {
+                    _impactListItems.Remove(rowItem);
+                    RefreshImpactListUi();
+                    UpdateTemplatePreview();
+                    if (!_isApplyingSavedForm)
+                    {
+                        MarkActiveTabDirty();
+                    }
+                };
+                Grid.SetColumn(removeButton, 2);
+                row.Children.Add(removeButton);
+
+                ImpactListItemsHost.Children.Add(row);
+            }
+
+            if (ImpactListEmptyHintTextBlock is not null)
+            {
+                ImpactListEmptyHintTextBlock.Visibility = _impactListItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            }
+        }
+
+        private List<string> BuildImpactListPreviewLines()
+        {
+            var lines = new List<string>();
+            foreach (var impact in _impactListItems)
+            {
+                var text = impact?.Impact?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    continue;
+                }
+
+                var status = NormalizeImpactStatus(impact?.StatusLink);
+                var emoji = GetStatusEmoji(status);
+                lines.Add(string.IsNullOrWhiteSpace(emoji) ? "- " + text : "- " + text + " " + emoji);
+            }
+
+            return lines;
+        }
+
+        private static List<ImpactListItem> CloneImpactList(IEnumerable<ImpactListItem>? source)
+        {
+            if (source is null)
+            {
+                return new List<ImpactListItem>();
+            }
+
+            return source
+                .Where(item => item is not null)
+                .Select(item => new ImpactListItem
+                {
+                    Impact = item.Impact?.Trim() ?? string.Empty,
+                    StatusLink = NormalizeImpactStatus(item.StatusLink)
+                })
+                .ToList();
+        }
+
+        private static string NormalizeImpactStatus(string? value)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return "Down";
+            }
+
+            if (text.Contains("down", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("open", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("❌", StringComparison.Ordinal))
+            {
+                return "Down";
+            }
+
+            if (text.Contains("up", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("close", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("closed", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("✅", StringComparison.Ordinal))
+            {
+                return "Up";
+            }
+
+            if (text.Contains("cancel", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("cancelled", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("⛔", StringComparison.Ordinal))
+            {
+                return "Cancel";
+            }
+
+            return "Down";
+        }
+
+        private static string ToImpactStatusOptionLabel(string normalizedStatus)
+        {
+            var normalized = NormalizeImpactStatus(normalizedStatus);
+            if (string.Equals(normalized, "Up", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Up ✅";
+            }
+
+            if (string.Equals(normalized, "Cancel", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Cancel ⛔";
+            }
+
+            return "Down ❌";
+        }
+
+        private static string FormatMainStatusLinkForPreview(string? value)
+        {
+            var normalized = NormalizeStatusLink(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return string.Empty;
+            }
+
+            var emoji = GetStatusEmoji(normalized);
+            return string.IsNullOrWhiteSpace(emoji) ? normalized : normalized + " " + emoji;
+        }
+
+        private static string GetStatusEmoji(string? value)
+        {
+            var normalized = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return string.Empty;
+            }
+
+            if (string.Equals(normalized, "Down", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "Open", StringComparison.OrdinalIgnoreCase))
+            {
+                return "❌";
+            }
+
+            if (string.Equals(normalized, "Up", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, "Closed", StringComparison.OrdinalIgnoreCase))
+            {
+                return "✅";
+            }
+
+            if (string.Equals(normalized, "Cancel", StringComparison.OrdinalIgnoreCase))
+            {
+                return "⛔";
+            }
+
+            return string.Empty;
+        }
+
         private void UpdateTemplatePreview()
         {
             if (TemplatePreviewTextBox is null)
@@ -1347,6 +1782,7 @@ namespace NOCREPORTGENERATOR.Pages
             var title = string.IsNullOrWhiteSpace(TitleTextBox?.Text) ? "Judul TT" : TitleTextBox.Text.Trim();
             var ttIoh = NormalizeTtIoh(TtIohTextBox?.Text);
             var statusLink = GetSelectedStatusLink();
+            var statusLinkDisplay = FormatMainStatusLinkForPreview(statusLink);
             var occurTime = GetDateTimePreviewValue(OccurTimeTextBox?.Text, DateTimeOffset.Now);
             var dispatchTime = GetDateTimePreviewValue(DispatchTimeTextBox?.Text, DateTimeOffset.Now);
             var pic = PicAutoSuggestBox?.Text?.Trim() ?? string.Empty;
@@ -1358,10 +1794,14 @@ namespace NOCREPORTGENERATOR.Pages
             var updateProgress = UpdateProgressTextBox?.Text?.Trim() ?? string.Empty;
             var showSegmentRoute = ShowSegmentRouteToggleSwitch?.IsOn ?? true;
             var showSystemKey = ShowSystemKeyToggleSwitch?.IsOn ?? true;
+            var impactLines = BuildImpactListPreviewLines();
 
             var preview = "*" + title + "*" + Environment.NewLine +
                 (string.IsNullOrWhiteSpace(ttIoh) ? string.Empty : "TT IOH = " + ttIoh + Environment.NewLine) +
-                (string.IsNullOrWhiteSpace(statusLink) ? string.Empty : "Status Link = " + statusLink + Environment.NewLine) +
+                (impactLines.Count == 0
+                    ? string.Empty
+                    : Environment.NewLine + "Impact List :" + Environment.NewLine + string.Join(Environment.NewLine, impactLines) + Environment.NewLine + Environment.NewLine) +
+                (string.IsNullOrWhiteSpace(statusLinkDisplay) ? string.Empty : "Status Link = " + statusLinkDisplay + Environment.NewLine) +
                 "Occur Time = " + occurTime + Environment.NewLine +
                 "Dispacth Time = " + dispatchTime + Environment.NewLine +
                 "PIC = " + pic + Environment.NewLine +
@@ -1560,6 +2000,7 @@ namespace NOCREPORTGENERATOR.Pages
                 SystemKey = SystemKeyTextBox.Text?.Trim() ?? string.Empty,
                 Coordinate = CoordinateTextBox.Text?.Trim() ?? string.Empty,
                 UpdateProgress = UpdateProgressTextBox.Text?.Trim() ?? string.Empty,
+                ImpactList = CloneImpactList(_impactListItems),
                 DraftName = SaveNameTextBox.Text?.Trim() ?? string.Empty,
                 SavedRecordId = currentState.SavedRecordId,
                 SavedRecordName = currentState.SavedRecordName
@@ -1589,6 +2030,9 @@ namespace NOCREPORTGENERATOR.Pages
                 CoordinateTextBox.Text = state.Coordinate;
                 UpdateProgressTextBox.Text = state.UpdateProgress;
                 SaveNameTextBox.Text = state.DraftName;
+                _impactListItems.Clear();
+                _impactListItems.AddRange(CloneImpactList(state.ImpactList));
+                RefreshImpactListUi();
             }
             finally
             {
@@ -1910,6 +2354,9 @@ namespace NOCREPORTGENERATOR.Pages
                 CoordinateTextBox.Text = record.Coordinate;
                 UpdateProgressTextBox.Text = record.UpdateProgress;
                 SaveNameTextBox.Text = record.Name;
+                _impactListItems.Clear();
+                _impactListItems.AddRange(CloneImpactList(record.ImpactList));
+                RefreshImpactListUi();
             }
             finally
             {
@@ -1997,6 +2444,7 @@ namespace NOCREPORTGENERATOR.Pages
                 !string.IsNullOrWhiteSpace(state.SystemKey) ||
                 !string.IsNullOrWhiteSpace(state.Coordinate) ||
                 !string.IsNullOrWhiteSpace(state.UpdateProgress) ||
+                (state.ImpactList?.Any(item => !string.IsNullOrWhiteSpace(item.Impact)) ?? false) ||
                 !state.ShowSegmentRoute ||
                 !state.ShowSystemKey;
         }
@@ -2024,6 +2472,7 @@ namespace NOCREPORTGENERATOR.Pages
             public string SystemKey { get; set; } = string.Empty;
             public string Coordinate { get; set; } = string.Empty;
             public string UpdateProgress { get; set; } = string.Empty;
+            public List<ImpactListItem> ImpactList { get; set; } = new();
         }
     }
 }

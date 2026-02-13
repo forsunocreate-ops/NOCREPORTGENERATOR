@@ -24,7 +24,8 @@ namespace NOCREPORTGENERATOR
             ["dashboard"] = 0,
             ["create-tt"] = 1,
             ["live-map"] = 2,
-            ["history-tt"] = 3
+            ["history-tt"] = 3,
+            ["settings"] = 4
         };
         private string _currentTag = "dashboard";
 
@@ -51,6 +52,8 @@ namespace NOCREPORTGENERATOR
             LiveMapNavButton.PointerExited += NavButton_PointerExited;
             HistoryTtNavButton.PointerEntered += NavButton_PointerEntered;
             HistoryTtNavButton.PointerExited += NavButton_PointerExited;
+            SettingsNavButton.PointerEntered += NavButton_PointerEntered;
+            SettingsNavButton.PointerExited += NavButton_PointerExited;
 
             TryInitializeLottiePulse();
             LogUiStackStatus();
@@ -145,6 +148,10 @@ namespace NOCREPORTGENERATOR
                     pageType = typeof(HistoryTtPage);
                     pageTitle = "History TT";
                     break;
+                case "settings":
+                    pageType = typeof(SettingsPage);
+                    pageTitle = "Settings";
+                    break;
                 default:
                     pageType = typeof(DashboardPage);
                     pageTitle = "Dashboard";
@@ -193,6 +200,7 @@ namespace NOCREPORTGENERATOR
             ApplyNavButtonState(CreateTtNavButton, "create-tt", selectedTag);
             ApplyNavButtonState(LiveMapNavButton, "live-map", selectedTag);
             ApplyNavButtonState(HistoryTtNavButton, "history-tt", selectedTag);
+            ApplyNavButtonState(SettingsNavButton, "settings", selectedTag);
         }
 
         private void ApplyNavButtonState(Button button, string buttonTag, string selectedTag)

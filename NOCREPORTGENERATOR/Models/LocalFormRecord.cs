@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace NOCREPORTGENERATOR.Models
@@ -23,8 +24,15 @@ namespace NOCREPORTGENERATOR.Models
         public string SystemKey { get; set; } = string.Empty;
         public string Coordinate { get; set; } = string.Empty;
         public string UpdateProgress { get; set; } = string.Empty;
+        public List<ImpactListItem> ImpactList { get; set; } = new();
 
         [JsonIgnore]
         public string DisplayName => $"{SavedAt:dd-MM-yyyy HH:mm} - {Name}";
+    }
+
+    public sealed class ImpactListItem
+    {
+        public string Impact { get; set; } = string.Empty;
+        public string StatusLink { get; set; } = string.Empty;
     }
 }

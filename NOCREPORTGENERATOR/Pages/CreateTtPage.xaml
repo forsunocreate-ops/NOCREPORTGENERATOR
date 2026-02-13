@@ -335,6 +335,27 @@
                                 PlaceholderText="Isi cut point"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />
+
+                            <StackPanel Spacing="8">
+                                <Grid ColumnSpacing="8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Impact List" />
+                                    <Button Grid.Column="1" Click="AddImpactListButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEA13;" />
+                                            <TextBlock Text="+" />
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                                <StackPanel x:Name="ImpactListItemsHost" Spacing="6" />
+                                <TextBlock
+                                    x:Name="ImpactListEmptyHintTextBlock"
+                                    Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                    Text="Belum ada impact list. Klik + untuk menambah." />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
@@ -378,6 +399,36 @@
                                 PlaceholderText="Contoh: 6d12'11.2&quot;S 106d49'37.5&quot;E"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />
+
+                            <Border
+                                x:Name="CoordinatePhotoDropZoneBorder"
+                                AllowDrop="True"
+                                Padding="10"
+                                Background="{StaticResource ShellPanelSecondaryBackgroundBrush}"
+                                BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                DragOver="CoordinatePhotoDropZoneBorder_DragOver"
+                                Drop="CoordinatePhotoDropZoneBorder_Drop">
+                                <StackPanel Spacing="8">
+                                    <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="AI Coordinate From Photo" />
+                                    <TextBlock
+                                        Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                        Text="Drop foto watermark koordinat (local/WhatsApp), atau paste dari clipboard." />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Click="LoadCoordinatePhotoButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                            <TextBlock Text="Load Photo" />
+                                        </Button>
+                                        <Button Click="PasteCoordinatePhotoButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                            <TextBlock Text="Paste WhatsApp Image" />
+                                        </Button>
+                                    </StackPanel>
+                                    <TextBlock
+                                        x:Name="CoordinatePhotoStatusTextBlock"
+                                        Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                        Text="Belum ada foto diproses." />
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 

@@ -36,7 +36,7 @@ namespace NOCREPORTGENERATOR.Services
                     using var command = connection.CreateCommand();
                     command.CommandText =
                         "SELECT id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, status_link, pic, root_cause, cut_point, " +
-                        "show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress " +
+                        "show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json " +
                         "FROM tt_forms ORDER BY saved_at DESC;";
                     using var reader = command.ExecuteReader();
                     while (reader.Read())
@@ -278,10 +278,12 @@ namespace NOCREPORTGENERATOR.Services
                     "segment_route TEXT, " +
                     "system_key TEXT, " +
                     "coordinate TEXT, " +
-                    "update_progress TEXT" +
+                    "update_progress TEXT, " +
+                    "impact_list_json TEXT" +
                     ");";
                 command.ExecuteNonQuery();
                 EnsureColumnExists(connection, "tt_forms", "status_link", "TEXT");
+                EnsureColumnExists(connection, "tt_forms", "impact_list_json", "TEXT");
 
                 using var indexCommand = connection.CreateCommand();
                 indexCommand.CommandText =
@@ -351,14 +353,14 @@ namespace NOCREPORTGENERATOR.Services
 
             command.CommandText =
                 "INSERT INTO tt_forms " +
-                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress) " +
+                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json) " +
                 "VALUES " +
-                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $system_key, $coordinate, $update_progress) " +
+                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $system_key, $coordinate, $update_progress, $impact_list_json) " +
                 "ON CONFLICT(id) DO UPDATE SET " +
                 "name = excluded.name, saved_at = excluded.saved_at, tt_ioh = excluded.tt_ioh, title = excluded.title, occur_date_time = excluded.occur_date_time, " +
                 "dispatch_date_time = excluded.dispatch_date_time, status_link = excluded.status_link, pic = excluded.pic, root_cause = excluded.root_cause, cut_point = excluded.cut_point, " +
                 "show_segment_route = excluded.show_segment_route, show_system_key = excluded.show_system_key, segment_route = excluded.segment_route, " +
-                "system_key = excluded.system_key, coordinate = excluded.coordinate, update_progress = excluded.update_progress;";
+                "system_key = excluded.system_key, coordinate = excluded.coordinate, update_progress = excluded.update_progress, impact_list_json = excluded.impact_list_json;";
 
             command.Parameters.AddWithValue("$id", safe.Id);
             command.Parameters.AddWithValue("$name", safe.Name);
@@ -377,6 +379,7 @@ namespace NOCREPORTGENERATOR.Services
             command.Parameters.AddWithValue("$system_key", safe.SystemKey);
             command.Parameters.AddWithValue("$coordinate", safe.Coordinate);
             command.Parameters.AddWithValue("$update_progress", safe.UpdateProgress);
+            command.Parameters.AddWithValue("$impact_list_json", SerializeImpactList(safe.ImpactList));
             command.ExecuteNonQuery();
         }
 
@@ -400,7 +403,8 @@ namespace NOCREPORTGENERATOR.Services
                 SegmentRoute = SafeGetString(reader, 13, string.Empty),
                 SystemKey = SafeGetString(reader, 14, string.Empty),
                 Coordinate = SafeGetString(reader, 15, string.Empty),
-                UpdateProgress = SafeGetString(reader, 16, string.Empty)
+                UpdateProgress = SafeGetString(reader, 16, string.Empty),
+                ImpactList = DeserializeImpactList(SafeGetString(reader, 17, string.Empty))
             };
         }
 
@@ -424,8 +428,63 @@ namespace NOCREPORTGENERATOR.Services
                 SegmentRoute = record.SegmentRoute ?? string.Empty,
                 SystemKey = record.SystemKey ?? string.Empty,
                 Coordinate = record.Coordinate ?? string.Empty,
-                UpdateProgress = record.UpdateProgress ?? string.Empty
+                UpdateProgress = record.UpdateProgress ?? string.Empty,
+                ImpactList = NormalizeImpactList(record.ImpactList)
             };
+        }
+
+        private static string SerializeImpactList(List<ImpactListItem>? items)
+        {
+            var safe = NormalizeImpactList(items);
+            if (safe.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            return JsonSerializer.Serialize(safe);
+        }
+
+        private static List<ImpactListItem> DeserializeImpactList(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return new List<ImpactListItem>();
+            }
+
+            try
+            {
+                var list = JsonSerializer.Deserialize<List<ImpactListItem>>(json) ?? new List<ImpactListItem>();
+                return NormalizeImpactList(list);
+            }
+            catch
+            {
+                return new List<ImpactListItem>();
+            }
+        }
+
+        private static List<ImpactListItem> NormalizeImpactList(List<ImpactListItem>? items)
+        {
+            if (items is null || items.Count == 0)
+            {
+                return new List<ImpactListItem>();
+            }
+
+            var normalized = new List<ImpactListItem>(items.Count);
+            foreach (var item in items)
+            {
+                if (item is null)
+                {
+                    continue;
+                }
+
+                normalized.Add(new ImpactListItem
+                {
+                    Impact = item.Impact?.Trim() ?? string.Empty,
+                    StatusLink = item.StatusLink?.Trim() ?? string.Empty
+                });
+            }
+
+            return normalized;
         }
 
         private static string ToStorageDate(DateTimeOffset value)

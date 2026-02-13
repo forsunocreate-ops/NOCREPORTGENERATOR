@@ -38,6 +38,7 @@
                         <Setter Target="CreateTtNavText.Visibility" Value="Visible" />
                         <Setter Target="LiveMapNavText.Visibility" Value="Visible" />
                         <Setter Target="HistoryTtNavText.Visibility" Value="Visible" />
+                        <Setter Target="SettingsNavText.Visibility" Value="Visible" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="CompactState">
@@ -53,6 +54,7 @@
                         <Setter Target="CreateTtNavText.Visibility" Value="Collapsed" />
                         <Setter Target="LiveMapNavText.Visibility" Value="Collapsed" />
                         <Setter Target="HistoryTtNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="SettingsNavText.Visibility" Value="Collapsed" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
@@ -214,6 +216,17 @@
                             <StackPanel Orientation="Horizontal" Spacing="10">
                                 <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE17;" />
                                 <TextBlock x:Name="HistoryTtNavText" Text="History TT" />
+                            </StackPanel>
+                        </Button>
+
+                        <Button
+                            x:Name="SettingsNavButton"
+                            Click="NavButton_Click"
+                            Style="{StaticResource ShellNavButtonStyle}"
+                            Tag="settings">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0E5;" />
+                                <TextBlock x:Name="SettingsNavText" Text="Settings" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
