@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NOCREPORTGENERATOR (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NOCREPORTGENERATOR (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
