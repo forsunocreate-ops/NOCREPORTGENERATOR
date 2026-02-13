@@ -7,19 +7,134 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
-    <Grid Padding="20" RowSpacing="12">
+    <Page.Transitions>
+        <TransitionCollection>
+            <NavigationThemeTransition />
+            <EntranceThemeTransition FromVerticalOffset="22" />
+        </TransitionCollection>
+    </Page.Transitions>
+
+    <Grid x:Name="LiveMapRootGrid" Padding="16" RowSpacing="12">
+        <Grid.ChildrenTransitions>
+            <TransitionCollection>
+                <EntranceThemeTransition FromVerticalOffset="18" IsStaggeringEnabled="True" />
+                <RepositionThemeTransition />
+            </TransitionCollection>
+        </Grid.ChildrenTransitions>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup>
+                <VisualState x:Name="LiveMapWideState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="980" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="LiveMapRootGrid.Padding" Value="16" />
+                        <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
+                        <Setter Target="MapToolbarSecondColumn.Width" Value="Auto" />
+                        <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
+                        <Setter Target="MapCenterButton.(Grid.Column)" Value="1" />
+                        <Setter Target="MapSearchBox.(Grid.Row)" Value="0" />
+                        <Setter Target="MapCenterButton.(Grid.Row)" Value="0" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="LiveMapCompactState">
+                    <VisualState.StateTriggers>
+                        <AdaptiveTrigger MinWindowWidth="0" />
+                    </VisualState.StateTriggers>
+                    <VisualState.Setters>
+                        <Setter Target="LiveMapRootGrid.Padding" Value="10" />
+                        <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
+                        <Setter Target="MapToolbarSecondColumn.Width" Value="0" />
+                        <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
+                        <Setter Target="MapCenterButton.(Grid.Column)" Value="0" />
+                        <Setter Target="MapSearchBox.(Grid.Row)" Value="0" />
+                        <Setter Target="MapCenterButton.(Grid.Row)" Value="1" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Spacing="4">
-            <TextBlock FontSize="28" FontWeight="SemiBold" Text="Live Map" />
-            <TextBlock Opacity="0.75" Text="Peta OpenStreetMap. Marker lokasi cut point dapat ditambahkan pada tahap berikutnya." />
-        </StackPanel>
+        <Border
+            Grid.Row="0"
+            Padding="16"
+            Background="{StaticResource ShellHeroGradientBrush}"
+            BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="16">
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Spacing="4">
+                    <TextBlock FontSize="12" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Mapping Console" />
+                    <TextBlock FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Live Map" />
+                    <TextBlock
+                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                        Text="Pantau cut point dan segment route pada peta OpenStreetMap." />
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE9D2;" />
+                        <FontIcon Glyph="&#xE8A7;" />
+                        <FontIcon Glyph="&#xE77B;" />
+                    </StackPanel>
+                </StackPanel>
+                <Border
+                    Grid.Column="1"
+                    Width="60"
+                    Height="60"
+                    Background="#2EFFFFFF"
+                    BorderBrush="#55FFFFFF"
+                    BorderThickness="1"
+                    CornerRadius="30" />
+            </Grid>
+        </Border>
 
-        <Border Grid.Row="1" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="8">
-            <WebView2 Source="https://www.openstreetmap.org" />
+        <Border
+            Grid.Row="1"
+            Style="{StaticResource ShellGlassCardStyle}">
+            <Grid ColumnSpacing="10" RowSpacing="10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="MapToolbarFirstColumn" Width="*" />
+                    <ColumnDefinition x:Name="MapToolbarSecondColumn" Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <AutoSuggestBox x:Name="MapSearchBox" PlaceholderText="Cari lokasi / koordinat..." QueryIcon="Find" />
+                <Button x:Name="MapCenterButton" Grid.Column="1" Style="{StaticResource ShellPrimaryButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon Glyph="&#xE8A7;" />
+                        <TextBlock Text="Center to Indonesia" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Border
+            Grid.Row="2"
+            Style="{StaticResource ShellGlassCardStyle}"
+            Padding="8">
+            <Grid RowSpacing="8">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <ProgressBar Height="8" IsIndeterminate="True" ShowError="False" ShowPaused="False" Value="50" />
+                <Border
+                    Grid.Row="1"
+                    Style="{StaticResource ShellGlassSubtleCardStyle}"
+                    Padding="6">
+                    <WebView2 Source="https://www.openstreetmap.org" />
+                </Border>
+            </Grid>
         </Border>
     </Grid>
 </Page>
+
+

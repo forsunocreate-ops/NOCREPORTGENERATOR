@@ -8,9 +8,76 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <!-- Other merged dictionaries here -->
             </ResourceDictionary.MergedDictionaries>
-            <!-- Other app resources here -->
+
+            <LinearGradientBrush x:Key="ShellBackgroundBrush" EndPoint="1,1" StartPoint="0,0">
+                <GradientStop Color="#FFDDEAFD" Offset="0" />
+                <GradientStop Color="#FFF2F7FF" Offset="0.46" />
+                <GradientStop Color="#FFF8FCFF" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ShellHeroGradientBrush" EndPoint="1,1" StartPoint="0,0">
+                <GradientStop Color="#FF2B608F" Offset="0" />
+                <GradientStop Color="#FF3D84C5" Offset="0.58" />
+                <GradientStop Color="#FF34B8CE" Offset="1" />
+            </LinearGradientBrush>
+            <LinearGradientBrush x:Key="ShellPrimaryButtonGradientBrush" EndPoint="1,1" StartPoint="0,0">
+                <GradientStop Color="#FF2F73AC" Offset="0" />
+                <GradientStop Color="#FF3E92CF" Offset="0.5" />
+                <GradientStop Color="#FF38BFD1" Offset="1" />
+            </LinearGradientBrush>
+
+            <SolidColorBrush x:Key="ShellPanelBackgroundBrush" Color="#F6FFFFFF" />
+            <SolidColorBrush x:Key="ShellPanelSecondaryBackgroundBrush" Color="#ECF4FF" />
+            <SolidColorBrush x:Key="ShellPanelBorderBrush" Color="#33557A9C" />
+            <SolidColorBrush x:Key="ShellGlassStrongBorderBrush" Color="#9A6ED7FF" />
+            <SolidColorBrush x:Key="ShellNavSelectedBackgroundBrush" Color="#3A2E80BF" />
+            <SolidColorBrush x:Key="ShellNavSelectedBorderBrush" Color="#FF2B8BCC" />
+            <SolidColorBrush x:Key="ShellNavForegroundBrush" Color="#FF173650" />
+            <SolidColorBrush x:Key="ShellMutedForegroundBrush" Color="#FF46627D" />
+            <SolidColorBrush x:Key="ShellTitleForegroundBrush" Color="#FF102E4B" />
+            <SolidColorBrush x:Key="ShellGlowBlueBrush" Color="#45A6D8FF" />
+            <SolidColorBrush x:Key="ShellGlowCyanBrush" Color="#40A4F5EE" />
+            <SolidColorBrush x:Key="ShellHeroPrimaryTextBrush" Color="#FFF7FCFF" />
+            <SolidColorBrush x:Key="ShellHeroSecondaryTextBrush" Color="#DDF3FCFF" />
+            <SolidColorBrush x:Key="ShellHeroCaptionTextBrush" Color="#CEE7FAFF" />
+            <SolidColorBrush x:Key="ShellNeonAccentBrush" Color="#FF6BD9FF" />
+
+            <Style x:Key="ShellGlassCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource ShellPanelBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource ShellPanelBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="16" />
+                <Setter Property="Padding" Value="14" />
+            </Style>
+
+            <Style x:Key="ShellGlassSubtleCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource ShellPanelSecondaryBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource ShellPanelBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+            </Style>
+
+            <Style x:Key="ShellNavButtonStyle" TargetType="Button">
+                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Padding" Value="12,11" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Background" Value="#42FFFFFF" />
+                <Setter Property="BorderBrush" Value="#3398C3E6" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Foreground" Value="{StaticResource ShellNavForegroundBrush}" />
+            </Style>
+
+            <Style x:Key="ShellPrimaryButtonStyle" TargetType="Button">
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="12,7" />
+                <Setter Property="Background" Value="{StaticResource ShellPrimaryButtonGradientBrush}" />
+                <Setter Property="Foreground" Value="#FFF0FAFF" />
+                <Setter Property="BorderBrush" Value="#9973D2FF" />
+                <Setter Property="BorderThickness" Value="1" />
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
