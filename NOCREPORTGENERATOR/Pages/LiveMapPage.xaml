@@ -21,6 +21,7 @@
                 <RepositionThemeTransition />
             </TransitionCollection>
         </Grid.ChildrenTransitions>
+
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup>
                 <VisualState x:Name="LiveMapWideState">
@@ -53,6 +54,7 @@
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -71,32 +73,37 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
+
                 <StackPanel Spacing="4">
-                    <TextBlock FontSize="12" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Mapping Console" />
-                    <TextBlock FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Live Map" />
+                    <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Mapping Console" />
+                    <TextBlock
+                        FontSize="30"
+                        FontWeight="SemiBold"
+                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                        Text="Live Map" />
                     <TextBlock
                         Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
                         Text="Pantau cut point dan segment route pada peta OpenStreetMap." />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE9D2;" />
-                        <FontIcon Glyph="&#xE8A7;" />
-                        <FontIcon Glyph="&#xE77B;" />
-                    </StackPanel>
                 </StackPanel>
+
                 <Border
                     Grid.Column="1"
-                    Width="60"
-                    Height="60"
-                    Background="#2EFFFFFF"
+                    Width="64"
+                    Height="64"
+                    Background="#34FFFFFF"
                     BorderBrush="#55FFFFFF"
                     BorderThickness="1"
-                    CornerRadius="30" />
+                    CornerRadius="32">
+                    <FontIcon
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                        Glyph="&#xE707;" />
+                </Border>
             </Grid>
         </Border>
 
-        <Border
-            Grid.Row="1"
-            Style="{StaticResource ShellGlassCardStyle}">
+        <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
             <Grid ColumnSpacing="10" RowSpacing="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -106,10 +113,19 @@
                     <ColumnDefinition x:Name="MapToolbarFirstColumn" Width="*" />
                     <ColumnDefinition x:Name="MapToolbarSecondColumn" Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <AutoSuggestBox x:Name="MapSearchBox" PlaceholderText="Cari lokasi / koordinat..." QueryIcon="Find" />
-                <Button x:Name="MapCenterButton" Grid.Column="1" Style="{StaticResource ShellPrimaryButtonStyle}">
+
+                <AutoSuggestBox
+                    x:Name="MapSearchBox"
+                    PlaceholderText="Cari lokasi / koordinat..."
+                    QueryIcon="Find"
+                    Style="{StaticResource ShellInputAutoSuggestBoxStyle}" />
+
+                <Button
+                    x:Name="MapCenterButton"
+                    Grid.Column="1"
+                    Style="{StaticResource ShellSecondaryButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE8A7;" />
+                        <FontIcon Glyph="&#xE709;" />
                         <TextBlock Text="Center to Indonesia" />
                     </StackPanel>
                 </Button>
@@ -118,23 +134,40 @@
 
         <Border
             Grid.Row="2"
-            Style="{StaticResource ShellGlassCardStyle}"
-            Padding="8">
+            Padding="8"
+            Style="{StaticResource ShellGlassCardStyle}">
             <Grid RowSpacing="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <ProgressBar Height="8" IsIndeterminate="True" ShowError="False" ShowPaused="False" Value="50" />
+
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar Height="8" IsIndeterminate="True" ShowError="False" ShowPaused="False" Value="50" />
+                    <Border
+                        Grid.Column="1"
+                        Padding="8,4"
+                        Background="#7FFFFFFF"
+                        BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10">
+                        <TextBlock
+                            Foreground="{StaticResource ShellMutedForegroundBrush}"
+                            Text="OpenStreetMap View" />
+                    </Border>
+                </Grid>
+
                 <Border
                     Grid.Row="1"
-                    Style="{StaticResource ShellGlassSubtleCardStyle}"
-                    Padding="6">
+                    Padding="6"
+                    Style="{StaticResource ShellGlassSubtleCardStyle}">
                     <WebView2 Source="https://www.openstreetmap.org" />
                 </Border>
             </Grid>
         </Border>
     </Grid>
 </Page>
-
-

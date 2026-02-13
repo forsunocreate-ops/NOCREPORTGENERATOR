@@ -6,10 +6,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+
     <Page.KeyboardAccelerators>
         <KeyboardAccelerator Invoked="NewTabAccelerator_Invoked" Key="T" Modifiers="Control" />
         <KeyboardAccelerator Invoked="CloseTabAccelerator_Invoked" Key="W" Modifiers="Control" />
     </Page.KeyboardAccelerators>
+
     <Page.Transitions>
         <TransitionCollection>
             <NavigationThemeTransition />
@@ -25,6 +27,7 @@
                     <RepositionThemeTransition />
                 </TransitionCollection>
             </Grid.ChildrenTransitions>
+
             <VisualStateManager.VisualStateGroups>
                 <VisualStateGroup>
                     <VisualState x:Name="WideLayoutState">
@@ -63,6 +66,7 @@
                     </VisualState>
                 </VisualStateGroup>
             </VisualStateManager.VisualStateGroups>
+
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -87,17 +91,19 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
+
                     <StackPanel Spacing="4">
-                        <TextBlock FontSize="12" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Template Composer" />
-                        <TextBlock FontSize="30" FontWeight="SemiBold" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Create TT" />
+                        <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Template Composer" />
+                        <TextBlock
+                            FontSize="30"
+                            FontWeight="SemiBold"
+                            Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                            Text="Create TT" />
                         <TextBlock
                             Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                            Text="Buat template incident cepat dari email, database link, dan input manual." />
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <FontIcon Glyph="&#xE9D2;" />
-                            <FontIcon Glyph="&#xE8A7;" />
-                        </StackPanel>
+                            Text="Susun template outage cepat dari email .msg, lookup database, dan input manual." />
                     </StackPanel>
+
                     <Grid
                         x:Name="HeroShortcutPanel"
                         Grid.Column="1"
@@ -108,7 +114,10 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <TextBlock HorizontalAlignment="Right" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Shortcut" />
+                        <TextBlock
+                            HorizontalAlignment="Right"
+                            Foreground="{StaticResource ShellHeroCaptionTextBrush}"
+                            Text="Shortcut" />
                         <TextBlock
                             Grid.Row="1"
                             HorizontalAlignment="Right"
@@ -117,13 +126,13 @@
                             Text="Ctrl+T / Ctrl+W" />
                         <Border
                             Grid.Row="2"
-                            Width="52"
-                            Height="52"
+                            Width="56"
+                            Height="56"
                             HorizontalAlignment="Right"
                             Background="#2EFFFFFF"
                             BorderBrush="#55FFFFFF"
                             BorderThickness="1"
-                            CornerRadius="26" />
+                            CornerRadius="28" />
                     </Grid>
                 </Grid>
             </Border>
@@ -141,71 +150,88 @@
                         MinWidth="420"
                         SelectionChanged="FormTabsTabView_SelectionChanged"
                         TabCloseRequested="FormTabsTabView_TabCloseRequested" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Click="DuplicateTabButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Duplicate Tab" />
-                            </StackPanel>
-                        </Button>
-                        <Button Click="LoadMsgButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Load .msg" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <TextBlock
-                        x:Name="MsgStatusTextBlock"
-                        Margin="2,0,0,0"
-                        Foreground="{StaticResource ShellMutedForegroundBrush}"
-                        Text="Pilih email .msg untuk auto-fill form." />
 
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <TextBox x:Name="SaveNameTextBox" PlaceholderText="Nama draft" Width="260" />
-                        <Button Click="SaveLocalButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Save Local" />
+                    <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Tab Actions" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Click="DuplicateTabButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8A7;" />
+                                        <TextBlock Text="Duplicate Tab" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Click="LoadMsgButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE715;" />
+                                        <TextBlock Text="Load .msg" />
+                                    </StackPanel>
+                                </Button>
                             </StackPanel>
-                        </Button>
-                        <Button Click="SaveAsLocalButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Save As" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="120" />
-                            <ColumnDefinition Width="120" />
-                        </Grid.ColumnDefinitions>
-                        <ComboBox
-                            x:Name="SavedFormsComboBox"
-                            Grid.Column="0"
-                            DisplayMemberPath="DisplayName"
-                            PlaceholderText="Pilih draft tersimpan" />
-                        <Button
-                            Grid.Column="1"
-                            Click="LoadSavedButton_Click"
-                            Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Load Selected" />
-                            </StackPanel>
-                        </Button>
-                        <Button
-                            Grid.Column="2"
-                            Click="DeleteSavedButton_Click"
-                            Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <FontIcon Glyph="&#xE8A7;" />
-                                <TextBlock Text="Delete Selected" />
-                            </StackPanel>
-                        </Button>
-                    </Grid>
+                            <TextBlock
+                                x:Name="MsgStatusTextBlock"
+                                Margin="2,0,0,0"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Pilih email .msg untuk auto-fill form." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Draft Management" />
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    x:Name="SaveNameTextBox"
+                                    Grid.Column="0"
+                                    PlaceholderText="Nama draft"
+                                    Style="{StaticResource ShellInputTextBoxStyle}" />
+                                <Button Grid.Column="1" Click="SaveLocalButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE74E;" />
+                                        <TextBlock Text="Save" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Click="SaveAsLocalButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE792;" />
+                                        <TextBlock Text="Save As" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox
+                                    x:Name="SavedFormsComboBox"
+                                    Grid.Column="0"
+                                    DisplayMemberPath="DisplayName"
+                                    PlaceholderText="Pilih draft tersimpan"
+                                    Style="{StaticResource ShellInputComboBoxStyle}" />
+                                <Button Grid.Column="1" Click="LoadSavedButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE8A5;" />
+                                        <TextBlock Text="Load" />
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="2" Click="DeleteSavedButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon Glyph="&#xE74D;" />
+                                        <TextBlock Text="Delete" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <Border
                         x:Name="EmailDropZoneBorder"
                         AllowDrop="True"
@@ -213,82 +239,143 @@
                         Background="{StaticResource ShellPanelSecondaryBackgroundBrush}"
                         BorderBrush="{StaticResource ShellPanelBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="10"
+                        CornerRadius="12"
                         DragOver="EmailDropZoneBorder_DragOver"
                         Drop="EmailDropZoneBorder_Drop">
-                        <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Drop file email .msg di sini untuk auto-fill." />
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon Foreground="{StaticResource ShellMutedForegroundBrush}" Glyph="&#xE8A5;" />
+                            <TextBlock
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Drop file email .msg di sini untuk auto-fill." />
+                        </StackPanel>
                     </Border>
 
-                    <TextBox x:Name="TitleTextBox" Header="Tittle" PlaceholderText="Masukkan judul TT" TextChanged="InputChanged" />
+                    <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Incident Details" />
 
-                    <Grid x:Name="OccurTimePanel" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Occur Time :" />
-                        <TextBox
-                            x:Name="OccurTimeTextBox"
-                            Grid.Column="1"
-                            HorizontalAlignment="Left"
-                            LostFocus="DateTimeTextBox_LostFocus"
-                            PlaceholderText="dd-MM-yyyy HH:mm"
-                            TextAlignment="Center"
-                            TextChanged="InputChanged"
-                            Width="190" />
-                    </Grid>
-                    <Grid x:Name="DispatchTimePanel" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Dispatch Time :" />
-                        <TextBox
-                            x:Name="DispatchTimeTextBox"
-                            Grid.Column="1"
-                            HorizontalAlignment="Left"
-                            LostFocus="DateTimeTextBox_LostFocus"
-                            PlaceholderText="dd-MM-yyyy HH:mm"
-                            TextAlignment="Center"
-                            TextChanged="InputChanged"
-                            Width="190" />
-                    </Grid>
+                            <TextBox
+                                x:Name="TitleTextBox"
+                                Header="Tittle"
+                                PlaceholderText="Masukkan judul TT"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
 
-                    <Grid ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <FontIcon Glyph="&#xE77B;" />
-                        <AutoSuggestBox
-                            x:Name="PicAutoSuggestBox"
-                            Grid.Column="1"
-                            Header="PIC"
-                            PlaceholderText="Search / pilih PIC"
-                            GotFocus="PicAutoSuggestBox_GotFocus"
-                            QueryIcon="Find"
-                            QuerySubmitted="PicAutoSuggestBox_QuerySubmitted"
-                            SuggestionChosen="PicAutoSuggestBox_SuggestionChosen"
-                            TextChanged="PicAutoSuggestBox_TextChanged" />
-                    </Grid>
-                    <TextBox x:Name="RootCauseTextBox" Header="Rootcause" PlaceholderText="Contoh: Still Investigation" TextChanged="InputChanged" />
-                    <TextBox x:Name="CutPointTextBox" Header="Cut Point" PlaceholderText="Isi cut point" TextChanged="InputChanged" />
-                    <StackPanel Orientation="Horizontal" Spacing="16">
-                        <ToggleSwitch x:Name="ShowSegmentRouteToggleSwitch" Header="Tampilkan Segment Route di Preview" IsOn="True" Toggled="PreviewOptionChanged" />
-                        <ToggleSwitch x:Name="ShowSystemKeyToggleSwitch" Header="Tampilkan System Key di Preview" IsOn="True" Toggled="PreviewOptionChanged" />
-                    </StackPanel>
-                    <AutoSuggestBox
-                        x:Name="SegmentRouteAutoSuggestBox"
-                        Header="Segment Route"
-                        PlaceholderText="Search / pilih Segment Route"
-                        GotFocus="SegmentRouteAutoSuggestBox_GotFocus"
-                        QueryIcon="Find"
-                        QuerySubmitted="SegmentRouteAutoSuggestBox_QuerySubmitted"
-                        SuggestionChosen="SegmentRouteAutoSuggestBox_SuggestionChosen"
-                        TextChanged="SegmentRouteAutoSuggestBox_TextChanged" />
-                    <TextBox x:Name="SystemKeyTextBox" Header="System Key" PlaceholderText="Contoh: 25MAJAYNW123456" TextChanged="InputChanged" />
-                    <TextBox x:Name="CoordinateTextBox" Header="Coordinate (DMS)" PlaceholderText="Contoh: 6d12'11.2&quot;S 106d49'37.5&quot;E" TextChanged="InputChanged" />
-                    <TextBox x:Name="UpdateProgressTextBox" AcceptsReturn="True" Header="Update Progress" MinHeight="180" PlaceholderText="Masukkan update progress per baris..." TextChanged="InputChanged" TextWrapping="Wrap" />
+                            <Grid x:Name="OccurTimePanel" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Occur Time :" />
+                                <TextBox
+                                    x:Name="OccurTimeTextBox"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    LostFocus="DateTimeTextBox_LostFocus"
+                                    PlaceholderText="dd-MM-yyyy HH:mm"
+                                    Style="{StaticResource ShellInputTextBoxStyle}"
+                                    TextAlignment="Center"
+                                    TextChanged="InputChanged"
+                                    Width="190" />
+                            </Grid>
+
+                            <Grid x:Name="DispatchTimePanel" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Dispatch Time :" />
+                                <TextBox
+                                    x:Name="DispatchTimeTextBox"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    LostFocus="DateTimeTextBox_LostFocus"
+                                    PlaceholderText="dd-MM-yyyy HH:mm"
+                                    Style="{StaticResource ShellInputTextBoxStyle}"
+                                    TextAlignment="Center"
+                                    TextChanged="InputChanged"
+                                    Width="190" />
+                            </Grid>
+
+                            <AutoSuggestBox
+                                x:Name="PicAutoSuggestBox"
+                                Header="PIC"
+                                PlaceholderText="Search / pilih PIC"
+                                Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                                GotFocus="PicAutoSuggestBox_GotFocus"
+                                QueryIcon="Find"
+                                QuerySubmitted="PicAutoSuggestBox_QuerySubmitted"
+                                SuggestionChosen="PicAutoSuggestBox_SuggestionChosen"
+                                TextChanged="PicAutoSuggestBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="RootCauseTextBox"
+                                Header="Rootcause"
+                                PlaceholderText="Contoh: Still Investigation"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
+
+                            <TextBox
+                                x:Name="CutPointTextBox"
+                                Header="Cut Point"
+                                PlaceholderText="Isi cut point"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Network Context" />
+                            <StackPanel Orientation="Horizontal" Spacing="16">
+                                <ToggleSwitch
+                                    x:Name="ShowSegmentRouteToggleSwitch"
+                                    Header="Tampilkan Segment Route di Preview"
+                                    IsOn="True"
+                                    Toggled="PreviewOptionChanged" />
+                                <ToggleSwitch
+                                    x:Name="ShowSystemKeyToggleSwitch"
+                                    Header="Tampilkan System Key di Preview"
+                                    IsOn="True"
+                                    Toggled="PreviewOptionChanged" />
+                            </StackPanel>
+
+                            <AutoSuggestBox
+                                x:Name="SegmentRouteAutoSuggestBox"
+                                Header="Segment Route"
+                                PlaceholderText="Search / pilih Segment Route"
+                                Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                                GotFocus="SegmentRouteAutoSuggestBox_GotFocus"
+                                QueryIcon="Find"
+                                QuerySubmitted="SegmentRouteAutoSuggestBox_QuerySubmitted"
+                                SuggestionChosen="SegmentRouteAutoSuggestBox_SuggestionChosen"
+                                TextChanged="SegmentRouteAutoSuggestBox_TextChanged" />
+
+                            <TextBox
+                                x:Name="SystemKeyTextBox"
+                                Header="System Key"
+                                PlaceholderText="Contoh: 25MAJAYNW123456"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
+
+                            <TextBox
+                                x:Name="CoordinateTextBox"
+                                Header="Coordinate (DMS)"
+                                PlaceholderText="Contoh: 6d12'11.2&quot;S 106d49'37.5&quot;E"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextChanged="InputChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <TextBox
+                        x:Name="UpdateProgressTextBox"
+                        AcceptsReturn="True"
+                        Header="Update Progress"
+                        MinHeight="180"
+                        PlaceholderText="Masukkan update progress per baris..."
+                        Style="{StaticResource ShellInputTextBoxStyle}"
+                        TextChanged="InputChanged"
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -298,10 +385,10 @@
                 Grid.Column="1"
                 Style="{StaticResource ShellGlassCardStyle}">
                 <StackPanel Spacing="10">
-                    <TextBlock FontSize="12" Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Output" />
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE9D2;" />
-                        <TextBlock FontSize="24" FontWeight="SemiBold" Foreground="{StaticResource ShellTitleForegroundBrush}" Text="Template Preview" />
+                    <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Output" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon Glyph="&#xE8A5;" />
+                        <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Template Preview" />
                     </StackPanel>
                     <Border
                         x:Name="PreviewTextBoxHost"
@@ -309,13 +396,17 @@
                         Background="{StaticResource ShellPanelSecondaryBackgroundBrush}"
                         BorderBrush="{StaticResource ShellPanelBorderBrush}"
                         BorderThickness="1"
-                        CornerRadius="10">
-                        <TextBox x:Name="TemplatePreviewTextBox" AcceptsReturn="True" IsReadOnly="True" MinHeight="720" TextWrapping="Wrap" />
+                        CornerRadius="12">
+                        <TextBox
+                            x:Name="TemplatePreviewTextBox"
+                            AcceptsReturn="True"
+                            IsReadOnly="True"
+                            MinHeight="720"
+                            Style="{StaticResource ShellInputTextBoxStyle}"
+                            TextWrapping="Wrap" />
                     </Border>
                 </StackPanel>
             </Border>
         </Grid>
     </ScrollViewer>
 </Page>
-
-

@@ -60,7 +60,7 @@ namespace NOCREPORTGENERATOR
                     : "loaded";
 
                 DeveloperDiagnostics.LogInfo(
-                    "UI stack active: WinUIEx, Lottie, FluentIcons, MaterialIcons, Win2D, Syncfusion. TelerikWinCompositeUI: " +
+                    "UI stack active: WinUIEx, Lottie, FluentIcons, MaterialIcons, Win2D. TelerikWinCompositeUI: " +
                     telerikStatus);
             }
             catch (Exception ex)
@@ -153,8 +153,8 @@ namespace NOCREPORTGENERATOR
             }
             else
             {
-                button.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
-                button.BorderBrush = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
+                button.Background = (Brush)Application.Current.Resources["ShellNavDefaultBackgroundBrush"];
+                button.BorderBrush = (Brush)Application.Current.Resources["ShellNavDefaultBorderBrush"];
                 button.FontWeight = Microsoft.UI.Text.FontWeights.Normal;
             }
         }

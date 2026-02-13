@@ -7,7 +7,6 @@
     xmlns:fluentIcons="using:FluentIcons.WinUI"
     xmlns:materialIcons="using:Material.Icons.WinUI3"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:syncfusion="using:Syncfusion.UI.Xaml.Core"
     xmlns:winex="using:WinUIEx"
     mc:Ignorable="d"
     Title="NOC Report Generator">
@@ -23,6 +22,7 @@
                 <RepositionThemeTransition />
             </TransitionCollection>
         </Grid.ChildrenTransitions>
+
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup>
                 <VisualState x:Name="WideState">
@@ -30,8 +30,8 @@
                         <AdaptiveTrigger MinWindowWidth="1200" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="ShellContentGrid.Padding" Value="16,8,16,16" />
-                        <Setter Target="ShellSidebarColumn.Width" Value="304" />
+                        <Setter Target="ShellContentGrid.Padding" Value="16,10,16,16" />
+                        <Setter Target="ShellSidebarColumn.Width" Value="318" />
                         <Setter Target="ShellSidebarBorder.Margin" Value="0,0,14,0" />
                         <Setter Target="SidebarWorkspaceCard.Visibility" Value="Visible" />
                         <Setter Target="DashboardNavText.Visibility" Value="Visible" />
@@ -45,7 +45,7 @@
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
                         <Setter Target="ShellContentGrid.Padding" Value="10,6,10,10" />
-                        <Setter Target="ShellSidebarColumn.Width" Value="84" />
+                        <Setter Target="ShellSidebarColumn.Width" Value="90" />
                         <Setter Target="ShellSidebarBorder.Margin" Value="0,0,10,0" />
                         <Setter Target="SidebarWorkspaceCard.Visibility" Value="Collapsed" />
                         <Setter Target="DashboardNavText.Visibility" Value="Collapsed" />
@@ -55,53 +55,68 @@
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
+
         <Grid.RowDefinitions>
-            <RowDefinition Height="44" />
+            <RowDefinition Height="52" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <Grid
             x:Name="AppTitleBarDragRegion"
             Grid.Row="0"
-            Padding="16,0,120,0"
+            Padding="16,6,120,8"
             Background="Transparent">
             <Border
                 VerticalAlignment="Center"
-                Padding="10,5"
+                Padding="12,8"
                 Background="{StaticResource ShellPanelBackgroundBrush}"
                 BorderBrush="{StaticResource ShellPanelBorderBrush}"
                 BorderThickness="1"
-                CornerRadius="11">
-                <StackPanel
-                    VerticalAlignment="Center"
-                    Orientation="Horizontal"
-                    Spacing="10">
-                    <Grid>
-                        <materialIcons:MaterialIcon
-                            Width="18"
-                            Height="18"
+                CornerRadius="14">
+                <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Width="28"
+                        Height="28"
+                        VerticalAlignment="Center"
+                        Background="#40FFFFFF"
+                        BorderBrush="#55FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="14">
+                        <Grid>
+                            <materialIcons:MaterialIcon
+                                Width="16"
+                                Height="16"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Foreground="{StaticResource ShellTitleForegroundBrush}"
+                                Kind="NotebookEditOutline" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="13"
+                            FontWeight="SemiBold"
                             Foreground="{StaticResource ShellTitleForegroundBrush}"
-                            Kind="Abacus" />
-                        <FontIcon
-                            Margin="12,0,0,0"
-                            Foreground="{StaticResource ShellMutedForegroundBrush}"
-                            Glyph="&#xE895;" />
-                    </Grid>
-                    <StackPanel>
-                        <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource ShellTitleForegroundBrush}" Text="NOC Report Generator" />
+                            Text="NOC Report Generator" />
                         <TextBlock
                             x:Name="WindowSubtitleTextBlock"
                             FontSize="11"
                             Foreground="{StaticResource ShellMutedForegroundBrush}"
                             Text="Network incident template workspace" />
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
 
-        <Grid x:Name="ShellContentGrid" Grid.Row="1" Padding="16,8,16,16">
+        <Grid x:Name="ShellContentGrid" Grid.Row="1" Padding="16,10,16,16">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition x:Name="ShellSidebarColumn" Width="300" />
+                <ColumnDefinition x:Name="ShellSidebarColumn" Width="318" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -121,7 +136,7 @@
                     <Border
                         x:Name="SidebarWorkspaceCard"
                         Grid.Row="0"
-                        Padding="12"
+                        Padding="14"
                         Background="{StaticResource ShellHeroGradientBrush}"
                         BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
                         BorderThickness="1"
@@ -131,15 +146,34 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Spacing="4">
-                                <TextBlock FontSize="12" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Workspace" />
-                                <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Incident Desk" />
+                            <StackPanel Spacing="3">
+                                <TextBlock
+                                    FontSize="11"
+                                    Foreground="{StaticResource ShellHeroCaptionTextBrush}"
+                                    Text="Workspace" />
+                                <TextBlock
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                                    Text="Incident Desk" />
                                 <TextBlock
                                     FontSize="12"
                                     Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                                    Text="Track, draft, and map outage reports." />
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <syncfusion:SfAvatarView AvatarName="NOC Team" />
+                                    Text="Kelola ticket, draft, dan template laporan outage." />
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Border
+                                        Width="28"
+                                        Height="28"
+                                        Background="#3AFFFFFF"
+                                        BorderBrush="#55FFFFFF"
+                                        BorderThickness="1"
+                                        CornerRadius="14">
+                                        <TextBlock
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                                            Text="N" />
+                                    </Border>
                                     <FontIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Glyph="&#xEB51;" />
                                     <Border
                                         x:Name="LottiePulseHost"
@@ -148,19 +182,27 @@
                                         VerticalAlignment="Center" />
                                 </StackPanel>
                             </StackPanel>
+
                             <Border
                                 Grid.Column="1"
-                                Width="54"
-                                Height="54"
+                                Width="52"
+                                Height="52"
                                 HorizontalAlignment="Right"
-                                Background="#2EFFFFFF"
+                                VerticalAlignment="Top"
+                                Background="#30FFFFFF"
                                 BorderBrush="#55FFFFFF"
                                 BorderThickness="1"
-                                CornerRadius="27" />
+                                CornerRadius="26" />
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                    <StackPanel Grid.Row="1" Margin="0,14,0,0" Spacing="4">
+                        <TextBlock
+                            Margin="6,0,0,4"
+                            Foreground="{StaticResource ShellMutedForegroundBrush}"
+                            Style="{StaticResource ShellSectionCaptionStyle}"
+                            Text="Navigation" />
+
                         <Button
                             x:Name="DashboardNavButton"
                             Click="NavButton_Click"
@@ -171,45 +213,55 @@
                                 <TextBlock x:Name="DashboardNavText" Text="Dashboard" />
                             </StackPanel>
                         </Button>
+
                         <Button
                             x:Name="CreateTtNavButton"
                             Click="NavButton_Click"
                             Style="{StaticResource ShellNavButtonStyle}"
                             Tag="create-tt">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE70F;" />
+                                <fluentIcons:SymbolIcon Symbol="Edit" />
                                 <TextBlock x:Name="CreateTtNavText" Text="Create TT" />
                             </StackPanel>
                         </Button>
+
                         <Button
                             x:Name="LiveMapNavButton"
                             Click="NavButton_Click"
                             Style="{StaticResource ShellNavButtonStyle}"
                             Tag="live-map">
                             <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon Glyph="&#xE707;" />
+                                <fluentIcons:SymbolIcon Symbol="Map" />
                                 <TextBlock x:Name="LiveMapNavText" Text="Live Map" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
 
-                    <StackPanel Grid.Row="3" Spacing="8">
-                        <ToggleSwitch
-                            x:Name="DeveloperModeToggleSwitch"
-                            Header="Developer Mode"
-                            Toggled="DeveloperModeToggleSwitch_Toggled" />
-                        <Button
-                            x:Name="ViewLogsButton"
-                            Click="ViewLogsButton_Click"
-                            HorizontalAlignment="Stretch"
-                            Style="{StaticResource ShellPrimaryButtonStyle}"
-                            Visibility="Collapsed">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <FontIcon Glyph="&#xE721;" />
-                                <TextBlock Text="View Error Logs" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                    <Border
+                        Grid.Row="3"
+                        Padding="10"
+                        Background="#55FFFFFF"
+                        BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                        <StackPanel Spacing="8">
+                            <ToggleSwitch
+                                x:Name="DeveloperModeToggleSwitch"
+                                Header="Developer Mode"
+                                Toggled="DeveloperModeToggleSwitch_Toggled" />
+                            <Button
+                                x:Name="ViewLogsButton"
+                                Click="ViewLogsButton_Click"
+                                HorizontalAlignment="Stretch"
+                                Style="{StaticResource ShellSecondaryButtonStyle}"
+                                Visibility="Collapsed">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE721;" />
+                                    <TextBlock Text="View Error Logs" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 
@@ -224,7 +276,7 @@
 
                     <Border
                         Grid.Row="0"
-                        Padding="12"
+                        Padding="14"
                         Background="{StaticResource ShellHeroGradientBrush}"
                         BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
                         BorderThickness="1"
@@ -234,20 +286,25 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
+
                             <StackPanel>
-                                <TextBlock FontSize="12" Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Current Module" />
+                                <TextBlock
+                                    FontSize="11"
+                                    Foreground="{StaticResource ShellHeroCaptionTextBrush}"
+                                    Text="Current Module" />
                                 <TextBlock
                                     x:Name="CurrentPageTitleTextBlock"
-                                    FontSize="24"
+                                    FontSize="28"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
                                     Text="Dashboard" />
                             </StackPanel>
+
                             <TextBlock
                                 Grid.Column="1"
                                 VerticalAlignment="Center"
                                 Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                                Text="WinUIEx + Fluent + Material + Syncfusion" />
+                                Text="WinUIEx Shell" />
                         </Grid>
                     </Border>
 
