@@ -174,11 +174,44 @@ namespace NOCREPORTGENERATOR
         private void UpdateContentHeaderVisibility(string tag)
         {
             var isLiveMap = string.Equals(tag, "live-map", StringComparison.OrdinalIgnoreCase);
+            var isHistoryTt = string.Equals(tag, "history-tt", StringComparison.OrdinalIgnoreCase);
             ContentHeaderRowDefinition.Height = isLiveMap
                 ? new GridLength(0)
                 : GridLength.Auto;
             ContentHeaderBorder.Visibility = isLiveMap ? Visibility.Collapsed : Visibility.Visible;
             ContentHostBorder.Margin = isLiveMap ? new Thickness(0) : new Thickness(0, 14, 0, 0);
+            HeaderImportButton.Visibility = isHistoryTt ? Visibility.Visible : Visibility.Collapsed;
+            HeaderRefreshButton.Visibility = isHistoryTt ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        private async void HeaderImportButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ContentFrame.Content is not HistoryTtPage historyPage)
+            {
+                return;
+            }
+
+            HeaderImportButton.IsEnabled = false;
+            HeaderRefreshButton.IsEnabled = false;
+            try
+            {
+                await historyPage.ImportFromShellAsync();
+            }
+            finally
+            {
+                HeaderImportButton.IsEnabled = true;
+                HeaderRefreshButton.IsEnabled = true;
+            }
+        }
+
+        private async void HeaderRefreshButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (ContentFrame.Content is not HistoryTtPage historyPage)
+            {
+                return;
+            }
+
+            await historyPage.RefreshFromShellAsync();
         }
 
         private NavigationTransitionInfo BuildNavigationTransition(string nextTag)

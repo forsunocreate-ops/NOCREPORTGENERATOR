@@ -295,11 +295,39 @@
                                     Text="Dashboard" />
                             </StackPanel>
 
-                            <TextBlock
+                            <StackPanel
                                 Grid.Column="1"
-                                VerticalAlignment="Center"
-                                Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                                Text="WinUIEx Shell" />
+                                HorizontalAlignment="Right"
+                                Orientation="Horizontal"
+                                Spacing="8"
+                                VerticalAlignment="Center">
+                                <Button
+                                    x:Name="HeaderImportButton"
+                                    Click="HeaderImportButton_Click"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}"
+                                    Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
+                                        <TextBlock Text="Import TT" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button
+                                    x:Name="HeaderRefreshButton"
+                                    Click="HeaderRefreshButton_Click"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}"
+                                    Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
+                                        <TextBlock Text="Refresh" />
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                                    Text="WinUIEx Shell" />
+                            </StackPanel>
                         </Grid>
                     </Border>
 

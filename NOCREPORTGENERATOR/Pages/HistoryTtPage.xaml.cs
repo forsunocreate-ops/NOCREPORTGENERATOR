@@ -43,12 +43,12 @@ namespace NOCREPORTGENERATOR.Pages
             await LoadHistoryAsync();
         }
 
-        private async void RefreshButton_Click(object sender, RoutedEventArgs e)
+        public async Task RefreshFromShellAsync()
         {
             await LoadHistoryAsync();
         }
 
-        private async void ImportButton_Click(object sender, RoutedEventArgs e)
+        public async Task ImportFromShellAsync()
         {
             if (_isImporting)
             {
@@ -58,8 +58,6 @@ namespace NOCREPORTGENERATOR.Pages
             try
             {
                 _isImporting = true;
-                ImportButton.IsEnabled = false;
-                RefreshButton.IsEnabled = false;
                 SummaryTextBlock.Text = "Memilih file import...";
 
                 var picker = new FileOpenPicker();
@@ -125,8 +123,6 @@ namespace NOCREPORTGENERATOR.Pages
             finally
             {
                 _isImporting = false;
-                ImportButton.IsEnabled = true;
-                RefreshButton.IsEnabled = true;
             }
         }
 
@@ -357,6 +353,18 @@ namespace NOCREPORTGENERATOR.Pages
             RefreshCurrentView();
         }
 
+        private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (SearchTextBox is not null && !string.IsNullOrWhiteSpace(SearchTextBox.Text))
+            {
+                SearchTextBox.Text = string.Empty;
+                return;
+            }
+
+            _currentPage = 1;
+            RefreshCurrentView();
+        }
+
         private void StatusFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (!_viewOptionsInitialized || _isUpdatingAdvancedFilters)
@@ -574,6 +582,18 @@ namespace NOCREPORTGENERATOR.Pages
                 end.ToString(CultureInfo.InvariantCulture) + " dari " +
                 totalFiltered.ToString(CultureInfo.InvariantCulture) +
                 " data (total: " + _allHistoryItems.Count.ToString(CultureInfo.InvariantCulture) + ")";
+
+            KpiTotalTextBlock.Text = _allHistoryItems.Count.ToString(CultureInfo.InvariantCulture);
+            KpiFilteredTextBlock.Text = totalFiltered.ToString(CultureInfo.InvariantCulture);
+            KpiOpenTextBlock.Text = _allHistoryItems.Count(x =>
+                ContainsInsensitive(x.StatusLink, "open") ||
+                ContainsInsensitive(x.StatusLink, "down")).ToString(CultureInfo.InvariantCulture);
+            KpiSegmentTextBlock.Text = _allHistoryItems
+                .Where(x => !string.IsNullOrWhiteSpace(x.SegmentRoute) && !string.Equals(x.SegmentRoute, "-", StringComparison.Ordinal))
+                .Select(x => x.SegmentRoute)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count()
+                .ToString(CultureInfo.InvariantCulture);
 
             PageInfoTextBlock.Text = "Page " + _currentPage.ToString(CultureInfo.InvariantCulture) + " / " + _totalPages.ToString(CultureInfo.InvariantCulture);
             PrevPageButton.IsEnabled = _currentPage > 1;

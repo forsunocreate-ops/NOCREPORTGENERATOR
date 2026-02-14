@@ -117,6 +117,13 @@
                 <Setter Property="CornerRadius" Value="10" />
             </Style>
 
+            <Style x:Key="ShellInputCalendarDatePickerStyle" TargetType="CalendarDatePicker">
+                <Setter Property="Background" Value="#FBFFFFFF" />
+                <Setter Property="BorderBrush" Value="#4889A9C4" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="10" />
+            </Style>
+
             <Style x:Key="ShellSectionTitleStyle" TargetType="TextBlock">
                 <Setter Property="FontSize" Value="18" />
                 <Setter Property="FontWeight" Value="SemiBold" />

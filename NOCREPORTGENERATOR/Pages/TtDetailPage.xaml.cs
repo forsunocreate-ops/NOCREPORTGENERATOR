@@ -15,6 +15,7 @@ namespace NOCREPORTGENERATOR.Pages
     {
         private static readonly Regex TtIohRegex = new(@"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private string _recordId = string.Empty;
+        private string _coordinate = string.Empty;
 
         public TtDetailPage()
         {
@@ -60,7 +61,9 @@ namespace NOCREPORTGENERATOR.Pages
                 SystemKeyTextBlock.Text = Normalize(record.SystemKey);
                 RootCauseTextBlock.Text = Normalize(record.RootCause);
                 CutPointTextBlock.Text = Normalize(record.CutPoint);
-                CoordinateTextBlock.Text = Normalize(record.Coordinate);
+                _coordinate = Normalize(record.Coordinate);
+                CoordinateTextBlock.Text = _coordinate;
+                OpenLiveMapButton.IsEnabled = CoordinateFormatService.TryParseAnyToDecimal(_coordinate, out _, out _);
                 SavedAtTextBlock.Text = FormatDate(record.SavedAt);
                 DraftNameTextBlock.Text = Normalize(record.Name);
                 UpdateProgressTextBox.Text = Normalize(record.UpdateProgress);
@@ -84,6 +87,23 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 mainWindow.NavigateToModule("history-tt");
             }
+        }
+
+        private void OpenLiveMapButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CoordinateFormatService.TryParseAnyToDecimal(_coordinate, out var lat, out var lon))
+            {
+                return;
+            }
+
+            PendingMapFocusService.Set(lat, lon, TtIohTextBlock.Text);
+            if (App.MainAppWindow is MainWindow mainWindow)
+            {
+                mainWindow.NavigateToModule("live-map");
+                return;
+            }
+
+            Frame?.Navigate(typeof(LiveMapPage));
         }
 
         private static string ResolveTtIoh(LocalFormRecord record)

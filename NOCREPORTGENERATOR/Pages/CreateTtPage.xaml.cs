@@ -1875,7 +1875,7 @@ namespace NOCREPORTGENERATOR.Pages
             return false;
         }
 
-        private async Task TryAutoFillSegmentRouteFromSystemKeyAsync()
+        private async Task TryAutoFillSegmentRouteFromSystemKeyAsync(bool keepExistingPic = false, bool keepExistingSegment = false)
         {
             _systemKeyLookupCts?.Cancel();
             _systemKeyLookupCts = new CancellationTokenSource();
@@ -1898,13 +1898,19 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     _isPopulatingSegmentOptions = true;
                     SegmentRouteAutoSuggestBox.ItemsSource = null;
-                    SegmentRouteAutoSuggestBox.Text = string.Empty;
+                    if (!keepExistingSegment)
+                    {
+                        SegmentRouteAutoSuggestBox.Text = string.Empty;
+                    }
                     SegmentRouteAutoSuggestBox.Tag = null;
                     _isPopulatingSegmentOptions = false;
                     _picBySegmentRoute = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
                     _allSegmentRoutes = new List<string>();
                     PicAutoSuggestBox.ItemsSource = null;
-                    PicAutoSuggestBox.Text = string.Empty;
+                    if (!keepExistingPic)
+                    {
+                        PicAutoSuggestBox.Text = string.Empty;
+                    }
                     DeveloperDiagnostics.LogInfo("System Key lookup: no match for [" + systemKeyInput + "].");
                     SetMsgStatus("Segment Route tidak ditemukan untuk System Key tersebut.");
                     return;
@@ -1915,8 +1921,12 @@ namespace NOCREPORTGENERATOR.Pages
                 var pendingSegment = SegmentRouteAutoSuggestBox.Tag as string;
                 var currentSegment = GetSelectedSegmentRoute();
                 var selectedSegment = string.Empty;
-                if (!string.IsNullOrWhiteSpace(pendingSegment) &&
-                    lookup.Segments.Any(x => string.Equals(x, pendingSegment, StringComparison.OrdinalIgnoreCase)))
+                if (keepExistingSegment && !string.IsNullOrWhiteSpace(currentSegment))
+                {
+                    selectedSegment = currentSegment;
+                }
+                else if (!string.IsNullOrWhiteSpace(pendingSegment) &&
+                         lookup.Segments.Any(x => string.Equals(x, pendingSegment, StringComparison.OrdinalIgnoreCase)))
                 {
                     selectedSegment = lookup.Segments.First(x => string.Equals(x, pendingSegment, StringComparison.OrdinalIgnoreCase));
                 }
@@ -1932,8 +1942,12 @@ namespace NOCREPORTGENERATOR.Pages
 
                 SegmentRouteAutoSuggestBox.Tag = null;
                 ApplySegmentRouteFilter(null, selectedSegment, true);
+                if (keepExistingSegment && !string.IsNullOrWhiteSpace(currentSegment))
+                {
+                    SegmentRouteAutoSuggestBox.Text = currentSegment;
+                }
 
-                SyncPicFromSelectedSegment();
+                SyncPicFromSelectedSegment(keepExistingPic);
                 UpdateTemplatePreview();
                 var picCount = _picBySegmentRoute.TryGetValue(selectedSegment, out var items) ? items.Count : 0;
                 DeveloperDiagnostics.LogInfo("System Key lookup matched " + lookup.Segments.Count + " segment route(s) and " + picCount + " PIC entry.");
@@ -1960,18 +1974,30 @@ namespace NOCREPORTGENERATOR.Pages
             return string.Empty;
         }
 
-        private void SyncPicFromSelectedSegment()
+        private void SyncPicFromSelectedSegment(bool keepExistingPic = false)
         {
+            var currentPic = PicAutoSuggestBox.Text?.Trim() ?? string.Empty;
+            if (keepExistingPic && !string.IsNullOrWhiteSpace(currentPic))
+            {
+                return;
+            }
+
             var selectedSegment = GetSelectedSegmentRoute();
             if (string.IsNullOrWhiteSpace(selectedSegment))
             {
-                PicAutoSuggestBox.Text = string.Empty;
+                if (!keepExistingPic)
+                {
+                    PicAutoSuggestBox.Text = string.Empty;
+                }
                 return;
             }
 
             if (!_picBySegmentRoute.TryGetValue(selectedSegment, out var picItems) || picItems.Count == 0)
             {
-                PicAutoSuggestBox.Text = string.Empty;
+                if (!keepExistingPic)
+                {
+                    PicAutoSuggestBox.Text = string.Empty;
+                }
                 return;
             }
 
@@ -2040,7 +2066,7 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             UpdateTemplatePreview();
-            _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
+            _ = TryAutoFillSegmentRouteFromSystemKeyAsync(keepExistingPic: true, keepExistingSegment: true);
         }
 
         private void UpdateActiveTabHeaderFromCurrentForm()
@@ -2367,7 +2393,7 @@ namespace NOCREPORTGENERATOR.Pages
             UpdateTemplatePreview();
             UpdateActiveTabHeaderFromCurrentForm();
             MarkActiveTabSaved();
-            _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
+            _ = TryAutoFillSegmentRouteFromSystemKeyAsync(keepExistingPic: true, keepExistingSegment: true);
         }
 
         private string GetTabHeaderLabel(FormTabState state)

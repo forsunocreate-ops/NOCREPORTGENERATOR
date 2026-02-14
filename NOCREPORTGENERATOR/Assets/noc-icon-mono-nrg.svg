@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="200" fill="url(#g)"/>
+  <defs>
+    <linearGradient id="g" x1="0" x2="1">
+      <stop offset="0" stop-color="#0B63FF"/>
+      <stop offset="1" stop-color="#00BFA6"/>
+    </linearGradient>
+  </defs>
+  <text x="512" y="600" text-anchor="middle" font-family="Segoe UI, Inter, Roboto, sans-serif"
+        font-weight="700" font-size="340" fill="#FFFFFF">NRG</text>
+</svg>

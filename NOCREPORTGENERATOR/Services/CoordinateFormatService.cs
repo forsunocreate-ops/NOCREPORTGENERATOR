@@ -81,7 +81,7 @@ namespace NOCREPORTGENERATOR.Services
 
             var trailingHemisphere = Regex.Match(
                 text,
-                @"(?i)(?<deg>" + degreePattern + @")\s*(?:°|d|º)?\s*(?<min>\d{1,2})?\s*(?:'|m|min)?\s*(?<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:""|s|sec)?\s*(?<hem>" + hemiPattern + @")");
+                @"(?i)(?<deg>" + degreePattern + @")\s*(?:\u00B0|d|\u00BA)?\s*(?<min>\d{1,2})?\s*(?:'|m|min)?\s*(?<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:\""|s|sec)?\s*(?<hem>" + hemiPattern + @")");
             if (trailingHemisphere.Success &&
                 TryConvertToDecimal(
                     trailingHemisphere.Groups["deg"].Value,
@@ -95,7 +95,7 @@ namespace NOCREPORTGENERATOR.Services
 
             var leadingHemisphere = Regex.Match(
                 text,
-                @"(?i)(?<hem>" + hemiPattern + @")\s*(?<deg>" + degreePattern + @")\s*(?:°|d|º)?\s*(?<min>\d{1,2})?\s*(?:'|m|min)?\s*(?<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:""|s|sec)?");
+                @"(?i)(?<hem>" + hemiPattern + @")\s*(?<deg>" + degreePattern + @")\s*(?:\u00B0|d|\u00BA)?\s*(?<min>\d{1,2})?\s*(?:'|m|min)?\s*(?<sec>\d{1,2}(?:[.,]\d+)?)?\s*(?:\""|s|sec)?");
             if (leadingHemisphere.Success &&
                 TryConvertToDecimal(
                     leadingHemisphere.Groups["deg"].Value,
@@ -165,10 +165,10 @@ namespace NOCREPORTGENERATOR.Services
             var seconds = (minutesTotal - minutes) * 60d;
 
             return degrees.ToString(CultureInfo.InvariantCulture) +
-                   "d" +
-                   minutes.ToString(CultureInfo.InvariantCulture) +
+                   "\u00B0" +
+                   minutes.ToString("00", CultureInfo.InvariantCulture) +
                    "'" +
-                   seconds.ToString("0.0", CultureInfo.InvariantCulture) +
+                   seconds.ToString("00.0", CultureInfo.InvariantCulture) +
                    "\"" +
                    hemisphere;
         }

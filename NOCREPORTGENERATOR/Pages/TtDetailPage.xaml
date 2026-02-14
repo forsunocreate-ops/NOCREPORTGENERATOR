@@ -103,7 +103,15 @@
                         <TextBlock x:Name="CutPointTextBlock" Grid.Row="9" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
 
                         <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Coordinate" />
-                        <TextBlock x:Name="CoordinateTextBlock" Grid.Row="10" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                            <TextBlock x:Name="CoordinateTextBlock" VerticalAlignment="Center" Text="-" TextWrapping="WrapWholeWords" />
+                            <Button
+                                x:Name="OpenLiveMapButton"
+                                Click="OpenLiveMapButton_Click"
+                                Style="{StaticResource ShellSecondaryButtonStyle}">
+                                <TextBlock Text="LiveMap" />
+                            </Button>
+                        </StackPanel>
 
                         <TextBlock Grid.Row="11" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Saved At" />
                         <TextBlock x:Name="SavedAtTextBlock" Grid.Row="11" Grid.Column="1" Text="-" />

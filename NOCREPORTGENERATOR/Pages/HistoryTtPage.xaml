@@ -8,6 +8,10 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <Page.Resources>
+        <SolidColorBrush x:Key="HistoryHeroBackgroundBrush" Color="#F5FAFF" />
+        <SolidColorBrush x:Key="HistoryCardBackgroundBrush" Color="#FCFFFFFF" />
+        <SolidColorBrush x:Key="HistorySoftBorderBrush" Color="#1F2B4D73" />
+
         <Style x:Key="HistoryLinkButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -16,70 +20,26 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Foreground" Value="{StaticResource ShellNavForegroundBrush}" />
         </Style>
+        <Style x:Key="HistoryKpiCardStyle" TargetType="Border">
+            <Setter Property="Padding" Value="12" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Background" Value="{StaticResource HistoryCardBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource HistorySoftBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
     </Page.Resources>
 
-    <Grid x:Name="HistoryRootGrid" Padding="16" RowSpacing="12">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
+    <Grid x:Name="HistoryRootGrid" Padding="16">
         <Border
             Grid.Row="0"
-            Padding="16"
-            Background="{StaticResource ShellHeroGradientBrush}"
-            BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
+            Background="{StaticResource HistoryCardBackgroundBrush}"
+            BorderBrush="{StaticResource HistorySoftBorderBrush}"
             BorderThickness="1"
-            CornerRadius="16">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <StackPanel Spacing="4">
-                    <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Data Lokal" />
-                    <TextBlock
-                        FontSize="30"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                        Text="History TT" />
-                    <TextBlock
-                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                        Text="List TT tersimpan dari form Create TT." />
-                </StackPanel>
-
-                <StackPanel
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    VerticalAlignment="Center">
-                    <Button
-                        x:Name="ImportButton"
-                        Click="ImportButton_Click"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
-                            <TextBlock Text="Import TT" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button
-                        x:Name="RefreshButton"
-                        Click="RefreshButton_Click"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
-                            <TextBlock Text="Refresh" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-            </Grid>
-        </Border>
-
-        <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
+            CornerRadius="16"
+            Padding="14">
             <Grid RowSpacing="10">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -87,15 +47,60 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
+                <Grid Grid.Row="0" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" Style="{StaticResource HistoryKpiCardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Total Data" />
+                            <TextBlock x:Name="KpiTotalTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="1" Style="{StaticResource HistoryKpiCardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Data Tampil" />
+                            <TextBlock x:Name="KpiFilteredTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource HistoryKpiCardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Status Open/Down" />
+                            <TextBlock x:Name="KpiOpenTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="3" Style="{StaticResource HistoryKpiCardStyle}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Unique Segment" />
+                            <TextBlock x:Name="KpiSegmentTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
                 <TextBlock
                     x:Name="SummaryTextBlock"
-                    Grid.Row="0"
+                    Grid.Row="1"
                     Style="{StaticResource ShellSectionCaptionStyle}"
                     Text="0 data" />
 
-                <Grid Grid.Row="1" ColumnSpacing="10">
+                <Border
+                    Grid.Row="2"
+                    Padding="10"
+                    Background="{StaticResource HistoryCardBackgroundBrush}"
+                    BorderBrush="{StaticResource HistorySoftBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2.2*" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -104,12 +109,14 @@
                         x:Name="SearchTextBox"
                         Grid.Column="0"
                         PlaceholderText="Filter: TT IOH, Status Link, Segment, Root Cause, CP Location..."
+                        Style="{StaticResource ShellInputTextBoxStyle}"
                         TextChanged="SearchTextBox_TextChanged" />
 
                     <ComboBox
                         x:Name="SortComboBox"
                         Grid.Column="1"
                         MinWidth="210"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
                         SelectionChanged="SortComboBox_SelectionChanged" />
 
                     <StackPanel
@@ -121,11 +128,30 @@
                         <ComboBox
                             x:Name="PageSizeComboBox"
                             MinWidth="90"
+                            Style="{StaticResource ShellInputComboBoxStyle}"
                         SelectionChanged="PageSizeComboBox_SelectionChanged" />
                     </StackPanel>
-                </Grid>
 
-                <Grid Grid.Row="2" ColumnSpacing="10">
+                    <Button
+                        Grid.Column="3"
+                        Click="ClearSearchButton_Click"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB99;" />
+                            <TextBlock Text="Clear Search" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+                </Border>
+
+                <Border
+                    Grid.Row="3"
+                    Padding="10"
+                    Background="{StaticResource HistoryCardBackgroundBrush}"
+                    BorderBrush="{StaticResource HistorySoftBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="190" />
@@ -142,6 +168,7 @@
                     <ComboBox
                         x:Name="StatusFilterComboBox"
                         Grid.Column="1"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
                         VerticalAlignment="Center"
                         SelectionChanged="StatusFilterComboBox_SelectionChanged" />
 
@@ -151,6 +178,7 @@
                         Grid.Column="3"
                         IsEditable="True"
                         IsTextSearchEnabled="True"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
                         VerticalAlignment="Center"
                         SelectionChanged="SegmentFilterComboBox_SelectionChanged" />
 
@@ -160,6 +188,7 @@
                         Grid.Column="5"
                         MinWidth="220"
                         PlaceholderText="Pilih tanggal"
+                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
                         VerticalAlignment="Center"
                         DateChanged="DispatchFromDatePicker_DateChanged" />
 
@@ -169,6 +198,7 @@
                         Grid.Column="7"
                         MinWidth="220"
                         PlaceholderText="Pilih tanggal"
+                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
                         VerticalAlignment="Center"
                         DateChanged="DispatchToDatePicker_DateChanged" />
 
@@ -182,10 +212,11 @@
                         <TextBlock Text="Reset Filter Lanjutan" />
                     </Button>
                 </Grid>
+                </Border>
 
                 <controls:DataGrid
                     x:Name="HistoryDataGrid"
-                    Grid.Row="3"
+                    Grid.Row="4"
                     AutoGenerateColumns="False"
                     CanUserSortColumns="False"
                     GridLinesVisibility="Horizontal"
@@ -250,7 +281,7 @@
                     </controls:DataGrid.Columns>
                 </controls:DataGrid>
 
-                <Grid Grid.Row="4" ColumnSpacing="10">
+                <Grid Grid.Row="5" ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />

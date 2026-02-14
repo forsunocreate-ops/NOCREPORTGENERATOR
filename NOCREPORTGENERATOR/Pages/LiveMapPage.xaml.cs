@@ -12,6 +12,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.System;
 using WinRT.Interop;
 
 namespace NOCREPORTGENERATOR.Pages
@@ -21,6 +22,7 @@ namespace NOCREPORTGENERATOR.Pages
         private static readonly Regex NumberRegex = new(@"[-+]?\d+(?:[.,]\d+)?", RegexOptions.Compiled);
         private static readonly Regex DmsDirectionRegex = new(@"[NSEW]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex TitleRegex = new(@"\[(?<status>[^-\]]+)\s*-\s*(?<severity>[^\]]+)\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex TtIohNormalizeRegex = new(@"INC\W*(\d{8})\W*(\d{8})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly JsonSerializerOptions JsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         private static readonly string[] SmartKeywords = { "tt:", "seg:", "cp:", "from:", "to:", "date:", "status:", "sev:" };
         private const string AllSegmentOption = "Semua Segment";
@@ -46,6 +48,7 @@ namespace NOCREPORTGENERATOR.Pages
             EnsureFilterOptions();
             await EnsureSegmentRouteFilterOptionsAsync();
             await LoadMapAsync();
+            await TryFocusPendingCoordinateAsync();
         }
 
         private async Task LoadMapAsync()
@@ -69,7 +72,50 @@ namespace NOCREPORTGENERATOR.Pages
             await MapWebView.EnsureCoreWebView2Async();
             MapWebView.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
             MapWebView.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+            MapWebView.CoreWebView2.WebMessageReceived -= CoreWebView2_WebMessageReceived;
+            MapWebView.CoreWebView2.WebMessageReceived += CoreWebView2_WebMessageReceived;
             _webViewReady = true;
+        }
+
+        private async void CoreWebView2_WebMessageReceived(Microsoft.Web.WebView2.Core.CoreWebView2 sender, Microsoft.Web.WebView2.Core.CoreWebView2WebMessageReceivedEventArgs args)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(args.WebMessageAsJson);
+                if (doc.RootElement.TryGetProperty("openDetail", out var openDetail) && openDetail.ValueKind == JsonValueKind.String)
+                {
+                    var tt = NormalizeTtIohForMap(openDetail.GetString());
+                    if (string.IsNullOrWhiteSpace(tt) || string.Equals(tt, "-", StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+
+                    var records = await LocalFormStorageService.GetAllAsync();
+                    var target = records
+                        .FirstOrDefault(x => string.Equals(NormalizeTtIohForMap(x.TtIoh), tt, StringComparison.OrdinalIgnoreCase));
+                    if (target is not null)
+                    {
+                        Frame?.Navigate(typeof(TtDetailPage), target.Id);
+                    }
+                    return;
+                }
+
+                if (!doc.RootElement.TryGetProperty("openMaps", out var openMaps) || openMaps.ValueKind != JsonValueKind.String)
+                {
+                    return;
+                }
+
+                var value = openMaps.GetString() ?? string.Empty;
+                if (!Uri.TryCreate(value, UriKind.Absolute, out var uri))
+                {
+                    return;
+                }
+
+                await Launcher.LaunchUriAsync(uri);
+            }
+            catch
+            {
+            }
         }
 
         private async void CoreWebView2_NavigationCompleted(Microsoft.Web.WebView2.Core.CoreWebView2 sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs args)
@@ -96,7 +142,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 Latitude = lat,
                 Longitude = lon,
-                TtIoh = string.IsNullOrWhiteSpace(r.TtIoh) ? "-" : r.TtIoh.Trim(),
+                TtIoh = NormalizeTtIohForMap(r.TtIoh),
                 Title = string.IsNullOrWhiteSpace(r.Title) ? "-" : r.Title.Trim(),
                 Status = string.IsNullOrWhiteSpace(status) ? "Unknown" : status,
                 Severity = string.IsNullOrWhiteSpace(severity) ? "Unknown" : severity,
@@ -231,12 +277,22 @@ namespace NOCREPORTGENERATOR.Pages
             lat = 0; lon = 0;
             if (string.IsNullOrWhiteSpace(text)) return false;
             var t = text.Trim();
+            if (CoordinateFormatService.TryParseAnyToDecimal(t, out lat, out lon) && IsValid(lat, lon))
+            {
+                return true;
+            }
+
             var split = t.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (split.Length >= 2 && TryParseFlexibleDouble(split[0], out lat) && TryParseFlexibleDouble(split[1], out lon) && IsValid(lat, lon)) return true;
-            if (split.Length >= 2 && TryParseDmsToken(split[0], out lat) && TryParseDmsToken(split[1], out lon) && IsValid(lat, lon)) return true;
-            var m = NumberRegex.Matches(t);
-            if (m.Count < 2) return false;
-            for (var i = 0; i < m.Count - 1; i++) if (TryParseFlexibleDouble(m[i].Value, out var la) && TryParseFlexibleDouble(m[i + 1].Value, out var lo) && IsValid(la, lo)) { lat = la; lon = lo; return true; }
+            if (split.Length >= 2 && TryParseFlexibleDouble(split[0], out lat) && TryParseFlexibleDouble(split[1], out lon) && IsValid(lat, lon))
+            {
+                return true;
+            }
+
+            if (split.Length >= 2 && TryParseDmsToken(split[0], out lat) && TryParseDmsToken(split[1], out lon) && IsValid(lat, lon))
+            {
+                return true;
+            }
+
             return false;
         }
 
@@ -263,15 +319,161 @@ namespace NOCREPORTGENERATOR.Pages
 
         private static bool IsValid(double lat, double lon) => lat is >= -90 and <= 90 && lon is >= -180 and <= 180;
 
-        private static string BuildMapHtml() => @"<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'/><link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'/><style>html,body,#map{height:100%;margin:0} .leaflet-popup-content{font:12px 'Segoe UI',sans-serif;}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'></script><script src='https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js'></script><script>const map=L.map('map',{preferCanvas:true}).setView([-2.5489,118.0149],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);const cluster=L.markerClusterGroup({chunkedLoading:true,chunkDelay:35,chunkInterval:120,showCoverageOnHover:false,spiderfyOnMaxZoom:true});map.addLayer(cluster);let heat=null;function render(data,on){cluster.clearLayers();if(heat){map.removeLayer(heat);heat=null;}const hp=[];for(const i of data){if(typeof i.latitude!=='number'||typeof i.longitude!=='number')continue;const m=L.marker([i.latitude,i.longitude]);m.bindPopup('<b>'+(i.ttIoh||'-')+'</b><br/>Status/Severity: '+(i.status||'-')+' / '+(i.severity||'-')+'<br/>Cut Point: '+(i.cutPoint||'-')+'<br/>Segment: '+(i.segmentRoute||'-')+'<br/>Dispatch: '+(i.dispatchTime||'-'));cluster.addLayer(m);hp.push([i.latitude,i.longitude,0.6]);}if(on&&hp.length>0){heat=L.heatLayer(hp,{radius:18,blur:15,minOpacity:0.3,maxZoom:13}).addTo(map);}if(cluster.getLayers().length>0){const b=cluster.getBounds();if(b.isValid())map.fitBounds(b.pad(0.08));}}if(window.chrome&&window.chrome.webview){window.chrome.webview.addEventListener('message',e=>{const d=e.data;if(Array.isArray(d)){render(d,false);return;}render((d&&Array.isArray(d.markers))?d.markers:[],!!(d&&d.heatmap));});}window.centerToIndonesia=()=>map.setView([-2.5489,118.0149],5);window.centerToCoordinate=(lat,lon)=>map.setView([lat,lon],13);</script></body></html>";
+        private static string BuildMapHtml() => """
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/>
+  <link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css'/>
+  <link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'/>
+  <style>
+    html,body,#map{height:100%;margin:0}
+    .leaflet-popup-content{margin:10px 12px;font:12px 'Segoe UI',sans-serif}
+    .tt-card{min-width:270px;max-width:320px}
+    .tt-ioh{display:inline-block;margin-bottom:8px;padding:2px 8px;border-radius:999px;background:#eef6ff;border:1px solid #b9d9ff;color:#1e5fa8;font-size:12px;font-weight:700;text-decoration:none}
+    .tt-ioh:hover{text-decoration:underline}
+    .tt-grid{display:grid;grid-template-columns:92px 1fr;gap:4px 8px;margin-bottom:8px}
+    .tt-label{color:#5b6e81}
+    .tt-value{color:#20374d;font-weight:600}
+    .tt-pill{display:inline-block;background:#e9f3ff;color:#1c4d79;border:1px solid #b8d8ff;border-radius:999px;padding:2px 8px;font-size:11px;margin-bottom:8px}
+    .tt-actions{display:flex;gap:8px}
+    .tt-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:8px;border:1px solid #1e5fa8;background:#1f6fca;color:#ffffff !important;-webkit-text-fill-color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;cursor:pointer;line-height:1}
+    .tt-btn:visited,.tt-btn:hover,.tt-btn:active{color:#ffffff !important;-webkit-text-fill-color:#ffffff;text-decoration:none}
+    .tt-btn:hover{filter:brightness(0.96)}
+  </style>
+</head>
+<body>
+  <div id='map'></div>
+  <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
+  <script src='https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js'></script>
+  <script src='https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js'></script>
+  <script>
+    const map=L.map('map',{preferCanvas:true}).setView([-2.5489,118.0149],5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    const cluster=L.markerClusterGroup({chunkedLoading:true,chunkDelay:35,chunkInterval:120,showCoverageOnHover:false,spiderfyOnMaxZoom:true});
+    map.addLayer(cluster);
+    let heat=null;
+
+    const esc = v => String(v ?? '-').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] || m));
+    function openMaps(url){
+      if(window.chrome && window.chrome.webview){
+        window.chrome.webview.postMessage({openMaps:url});
+        return false;
+      }
+      window.open(url,'_blank');
+      return false;
+    }
+    function openDetail(tt){
+      if(window.chrome && window.chrome.webview){
+        window.chrome.webview.postMessage({openDetail:tt});
+        return false;
+      }
+      return false;
+    }
+    function popupHtml(i){
+      const lat=Number(i.latitude);
+      const lon=Number(i.longitude);
+      const c=(Number.isFinite(lat)&&Number.isFinite(lon)) ? lat.toFixed(6)+', '+lon.toFixed(6) : '-';
+      const mapsUrl='https://www.google.com/maps?q='+encodeURIComponent(lat+','+lon);
+      return `<div class='tt-card'>
+        <a class='tt-ioh' href='#' onclick='return openDetail("${esc(i.ttIoh||"-")}")'>${esc(i.ttIoh||'-')}</a>
+        <div class='tt-pill'>${esc(i.status||'-')} / ${esc(i.severity||'-')}</div>
+        <div class='tt-grid'>
+          <div class='tt-label'>Segment</div><div class='tt-value'>${esc(i.segmentRoute||'-')}</div>
+          <div class='tt-label'>Cut Point</div><div class='tt-value'>${esc(i.cutPoint||'-')}</div>
+          <div class='tt-label'>Dispatch</div><div class='tt-value'>${esc(i.dispatchTime||'-')}</div>
+          <div class='tt-label'>Coordinate</div><div class='tt-value'>${esc(c)}</div>
+        </div>
+        <div class='tt-actions'>
+          <a class='tt-btn' href='#' onclick='return openMaps("${mapsUrl}")'>Google Maps</a>
+        </div>
+      </div>`;
+    }
+    function render(data,on){
+      cluster.clearLayers();
+      if(heat){map.removeLayer(heat);heat=null;}
+      const hp=[];
+      for(const i of data){
+        if(typeof i.latitude!=='number'||typeof i.longitude!=='number') continue;
+        const m=L.marker([i.latitude,i.longitude]);
+        m.bindPopup(popupHtml(i),{maxWidth:340});
+        cluster.addLayer(m);
+        hp.push([i.latitude,i.longitude,0.6]);
+      }
+      if(on&&hp.length>0){heat=L.heatLayer(hp,{radius:18,blur:15,minOpacity:0.3,maxZoom:13}).addTo(map);}
+      if(cluster.getLayers().length>0){
+        const b=cluster.getBounds();
+        if(b.isValid()) map.fitBounds(b.pad(0.08));
+      }
+    }
+
+    if(window.chrome&&window.chrome.webview){
+      window.chrome.webview.addEventListener('message',e=>{
+        const d=e.data;
+        if(Array.isArray(d)){render(d,false);return;}
+        render((d&&Array.isArray(d.markers))?d.markers:[],!!(d&&d.heatmap));
+      });
+    }
+    window.centerToIndonesia=()=>map.setView([-2.5489,118.0149],5);
+    window.centerToCoordinate=(lat,lon)=>map.setView([lat,lon],13);
+  </script>
+</body>
+</html>
+""";
 
         private async Task ExecuteMapScriptSafeAsync(string script)
         {
             try { await EnsureWebViewReadyAsync(); await MapWebView.ExecuteScriptAsync(script); } catch (Exception ex) { DeveloperDiagnostics.LogError("LiveMapPage.ExecuteMapScriptSafeAsync", ex); }
         }
 
+        private async Task TryFocusPendingCoordinateAsync()
+        {
+            var pending = PendingMapFocusService.Consume();
+            if (pending is null)
+            {
+                return;
+            }
+
+            var lat = pending.Latitude;
+            var lon = pending.Longitude;
+            var ttIoh = NormalizeTtIohForMap(pending.TtIoh);
+            if (!string.IsNullOrWhiteSpace(ttIoh) && !string.Equals(ttIoh, "-", StringComparison.Ordinal))
+            {
+                SmartFilterAutoSuggestBox.Text = "tt:" + ttIoh;
+                await ApplySmartFilterAsync();
+            }
+
+            await ExecuteMapScriptSafeAsync($"window.centerToCoordinate({lat.ToString(CultureInfo.InvariantCulture)},{lon.ToString(CultureInfo.InvariantCulture)});");
+        }
+
+        private static string NormalizeTtIohForMap(string? value)
+        {
+            var text = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return "-";
+            }
+
+            var match = TtIohNormalizeRegex.Match(text);
+            if (match.Success)
+            {
+                return "INC-" + match.Groups[1].Value + "-" + match.Groups[2].Value;
+            }
+
+            return text.ToUpperInvariant();
+        }
+
         private async void MapCenterButton_Click(object sender, RoutedEventArgs e) => await ExecuteMapScriptSafeAsync("window.centerToIndonesia();");
-        private void MapSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) { var t = sender.Text?.Trim() ?? string.Empty; var s = t.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries); if (s.Length >= 2 && TryParseFlexibleDouble(s[0], out var lat) && TryParseFlexibleDouble(s[1], out var lon)) _ = ExecuteMapScriptSafeAsync($"window.centerToCoordinate({lat.ToString(CultureInfo.InvariantCulture)},{lon.ToString(CultureInfo.InvariantCulture)});"); }
+        private void MapSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            var text = sender.Text?.Trim() ?? string.Empty;
+            if (TryParseCoordinate(text, out var lat, out var lon))
+            {
+                _ = ExecuteMapScriptSafeAsync($"window.centerToCoordinate({lat.ToString(CultureInfo.InvariantCulture)},{lon.ToString(CultureInfo.InvariantCulture)});");
+            }
+        }
         private async void SmartFilterAutoSuggestBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args) { if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput) sender.ItemsSource = BuildSmartSuggestions(sender.Text); await ApplySmartFilterAsync(); }
         private async void SmartFilterAutoSuggestBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => await ApplySmartFilterAsync();
         private async void SmartFilterAutoSuggestBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args) { if (args.SelectedItem is string s) sender.Text = s; await ApplySmartFilterAsync(); }

@@ -38,11 +38,9 @@
                             <Setter Target="CreateTtLayoutRoot.Padding" Value="16" />
                             <Setter Target="FormColumn.Width" Value="2*" />
                             <Setter Target="PreviewColumn.Width" Value="3*" />
-                            <Setter Target="HeroShortcutPanel.Visibility" Value="Visible" />
-                            <Setter Target="HeroSectionBorder.(Grid.ColumnSpan)" Value="2" />
-                            <Setter Target="FormSectionBorder.(Grid.Row)" Value="1" />
+                            <Setter Target="FormSectionBorder.(Grid.Row)" Value="0" />
                             <Setter Target="FormSectionBorder.(Grid.Column)" Value="0" />
-                            <Setter Target="PreviewSectionBorder.(Grid.Row)" Value="1" />
+                            <Setter Target="PreviewSectionBorder.(Grid.Row)" Value="0" />
                             <Setter Target="PreviewSectionBorder.(Grid.Column)" Value="1" />
                             <Setter Target="PreviewTextBoxHost.MinHeight" Value="720" />
                         </VisualState.Setters>
@@ -55,11 +53,9 @@
                             <Setter Target="CreateTtLayoutRoot.Padding" Value="10" />
                             <Setter Target="FormColumn.Width" Value="*" />
                             <Setter Target="PreviewColumn.Width" Value="0" />
-                            <Setter Target="HeroShortcutPanel.Visibility" Value="Collapsed" />
-                            <Setter Target="HeroSectionBorder.(Grid.ColumnSpan)" Value="1" />
-                            <Setter Target="FormSectionBorder.(Grid.Row)" Value="1" />
+                            <Setter Target="FormSectionBorder.(Grid.Row)" Value="0" />
                             <Setter Target="FormSectionBorder.(Grid.Column)" Value="0" />
-                            <Setter Target="PreviewSectionBorder.(Grid.Row)" Value="2" />
+                            <Setter Target="PreviewSectionBorder.(Grid.Row)" Value="1" />
                             <Setter Target="PreviewSectionBorder.(Grid.Column)" Value="0" />
                             <Setter Target="PreviewTextBoxHost.MinHeight" Value="360" />
                         </VisualState.Setters>
@@ -69,7 +65,6 @@
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -78,68 +73,8 @@
             </Grid.ColumnDefinitions>
 
             <Border
-                x:Name="HeroSectionBorder"
-                Grid.Row="0"
-                Grid.ColumnSpan="2"
-                Padding="16"
-                Background="{StaticResource ShellHeroGradientBrush}"
-                BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Spacing="4">
-                        <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Template Composer" />
-                        <TextBlock
-                            FontSize="30"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                            Text="Create TT" />
-                        <TextBlock
-                            Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                            Text="Susun template outage cepat dari email .msg, lookup database, dan input manual." />
-                    </StackPanel>
-
-                    <Grid
-                        x:Name="HeroShortcutPanel"
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        RowSpacing="6">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <TextBlock
-                            HorizontalAlignment="Right"
-                            Foreground="{StaticResource ShellHeroCaptionTextBrush}"
-                            Text="Shortcut" />
-                        <TextBlock
-                            Grid.Row="1"
-                            HorizontalAlignment="Right"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                            Text="Ctrl+T / Ctrl+W" />
-                        <Border
-                            Grid.Row="2"
-                            Width="56"
-                            Height="56"
-                            HorizontalAlignment="Right"
-                            Background="#2EFFFFFF"
-                            BorderBrush="#55FFFFFF"
-                            BorderThickness="1"
-                            CornerRadius="28" />
-                    </Grid>
-                </Grid>
-            </Border>
-
-            <Border
                 x:Name="FormSectionBorder"
-                Grid.Row="1"
+                Grid.Row="0"
                 Grid.Column="0"
                 Style="{StaticResource ShellGlassCardStyle}">
                 <StackPanel Spacing="12">
@@ -396,7 +331,7 @@
                             <TextBox
                                 x:Name="CoordinateTextBox"
                                 Header="Coordinate (DMS)"
-                                PlaceholderText="Contoh: 6d12'11.2&quot;S 106d49'37.5&quot;E"
+                                PlaceholderText="Contoh: 5°33'02.2&quot;N 95°21'52.8&quot;E"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />
 
@@ -446,7 +381,7 @@
 
             <Border
                 x:Name="PreviewSectionBorder"
-                Grid.Row="1"
+                Grid.Row="0"
                 Grid.Column="1"
                 Style="{StaticResource ShellGlassCardStyle}">
                 <StackPanel Spacing="10">
