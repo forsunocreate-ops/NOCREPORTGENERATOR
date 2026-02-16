@@ -20,6 +20,7 @@ namespace NOCREPORTGENERATOR.Services
         private static readonly Regex ProgressDateRegex = new(
             @"(?<dt>\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+\d{1,2}:\d{2}(?::\d{2})?\b)",
             RegexOptions.Compiled);
+        private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
         // Fixed column indexes based on TT_TRACKER.xlsx mapping.
         private const int ColSegmentRoute = 9;   // J
@@ -60,6 +61,7 @@ namespace NOCREPORTGENERATOR.Services
 
                 var result = new ImportExecutionResult();
                 var upsertContext = await LocalFormStorageService.CreateBulkUpsertByTtIohContextAsync();
+                var segmentRouteLookup = await BuildSegmentRouteLookupAsync();
                 using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 using var reader = ExcelReaderFactory.CreateReader(stream);
 
@@ -83,7 +85,7 @@ namespace NOCREPORTGENERATOR.Services
                         cancellationToken.ThrowIfCancellationRequested();
                         result.TotalRowsRead++;
 
-                        var record = TryBuildRecord(reader);
+                        var record = TryBuildRecord(reader, segmentRouteLookup);
                         if (record is null)
                         {
                             result.SkippedRows++;
@@ -151,6 +153,7 @@ namespace NOCREPORTGENERATOR.Services
 
             var target = Math.Max(1, takeCount);
             var result = new ImportPreviewResult();
+            var segmentRouteLookup = BuildSegmentRouteLookupAsync().GetAwaiter().GetResult();
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = ExcelReaderFactory.CreateReader(stream);
 
@@ -169,7 +172,7 @@ namespace NOCREPORTGENERATOR.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     result.TotalRowsRead++;
-                    var record = TryBuildRecord(reader);
+                    var record = TryBuildRecord(reader, segmentRouteLookup);
                     if (record is null)
                     {
                         emptyStreak++;
@@ -202,7 +205,9 @@ namespace NOCREPORTGENERATOR.Services
             return result;
         }
 
-        private static LocalFormRecord? TryBuildRecord(IExcelDataReader reader)
+        private static LocalFormRecord? TryBuildRecord(
+            IExcelDataReader reader,
+            IReadOnlyDictionary<string, SegmentRouteLookupItem> segmentRouteLookup)
         {
             var ttIoh = NormalizeTtIoh(GetText(reader, ColTtIoh));
             if (string.IsNullOrWhiteSpace(ttIoh))
@@ -223,6 +228,22 @@ namespace NOCREPORTGENERATOR.Services
             var rootCause = CombineRootCause(detail, specific);
             var cutPoint = ChooseCutPoint(GetText(reader, ColCutPoint), GetText(reader, ColAddress));
             var coordinate = BuildCoordinate(GetText(reader, ColLatitude), GetText(reader, ColLongitude));
+            var segmentRouteFromImport = GetText(reader, ColSegmentRoute);
+            var picFromImport = GetText(reader, ColPic);
+            var resolvedSegmentRoute = segmentRouteFromImport;
+            var resolvedPic = picFromImport;
+
+            var segmentKey = NormalizeSegmentRouteKey(segmentRouteFromImport);
+            if (!string.IsNullOrWhiteSpace(segmentKey) &&
+                segmentRouteLookup.TryGetValue(segmentKey, out var routeLookup))
+            {
+                resolvedSegmentRoute = routeLookup.SegmentRoute;
+                if (string.IsNullOrWhiteSpace(resolvedPic))
+                {
+                    resolvedPic = ExtractPicName(routeLookup.PrimaryPicDisplay);
+                }
+            }
+
             var now = DateTimeOffset.Now;
 
             return new LocalFormRecord
@@ -235,16 +256,46 @@ namespace NOCREPORTGENERATOR.Services
                 DispatchDateTime = dispatch,
                 FinishDateTime = finish,
                 StatusLink = NormalizeStatusLink(GetText(reader, ColStatusLink)),
-                Pic = GetText(reader, ColPic),
+                Pic = resolvedPic,
                 RootCause = rootCause,
                 CutPoint = cutPoint,
                 ShowSegmentRoute = true,
                 ShowSystemKey = false,
-                SegmentRoute = GetText(reader, ColSegmentRoute),
+                SegmentRoute = resolvedSegmentRoute,
                 SystemKey = string.Empty,
                 Coordinate = coordinate,
                 UpdateProgress = FormatUpdateProgress(GetText(reader, ColProgress))
             };
+        }
+
+        private static async Task<IReadOnlyDictionary<string, SegmentRouteLookupItem>> BuildSegmentRouteLookupAsync()
+        {
+            try
+            {
+                var map = await DatabaseLinkLookupService.GetSegmentPicMapAsync();
+                var result = new Dictionary<string, SegmentRouteLookupItem>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var pair in map)
+                {
+                    var key = NormalizeSegmentRouteKey(pair.Key);
+                    if (string.IsNullOrWhiteSpace(key))
+                    {
+                        continue;
+                    }
+
+                    var primaryPic = pair.Value.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)) ?? string.Empty;
+                    if (!result.ContainsKey(key))
+                    {
+                        result[key] = new SegmentRouteLookupItem(pair.Key, primaryPic);
+                    }
+                }
+
+                return result;
+            }
+            catch
+            {
+                return new Dictionary<string, SegmentRouteLookupItem>(StringComparer.OrdinalIgnoreCase);
+            }
         }
 
         private static ImportProgressInfo BuildProgress(
@@ -377,6 +428,34 @@ namespace NOCREPORTGENERATOR.Services
         private static string NormalizeText(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+        }
+
+        private static string NormalizeSegmentRouteKey(string? value)
+        {
+            var text = NormalizeText(value);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            return MultiSpaceRegex.Replace(text, " ").Trim().ToUpperInvariant();
+        }
+
+        private static string ExtractPicName(string? picDisplay)
+        {
+            var text = NormalizeText(picDisplay);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return string.Empty;
+            }
+
+            var parts = text.Split('|');
+            if (parts.Length >= 2)
+            {
+                return NormalizeText(parts[1]);
+            }
+
+            return text;
         }
 
         private static string NormalizeStatusLink(string? value)
@@ -535,6 +614,18 @@ namespace NOCREPORTGENERATOR.Services
 
             public string Text { get; }
             public DateTimeOffset? ParsedAt { get; }
+        }
+
+        private sealed class SegmentRouteLookupItem
+        {
+            public SegmentRouteLookupItem(string segmentRoute, string primaryPicDisplay)
+            {
+                SegmentRoute = segmentRoute;
+                PrimaryPicDisplay = primaryPicDisplay;
+            }
+
+            public string SegmentRoute { get; }
+            public string PrimaryPicDisplay { get; }
         }
     }
 }

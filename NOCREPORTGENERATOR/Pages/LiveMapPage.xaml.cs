@@ -330,6 +330,26 @@ namespace NOCREPORTGENERATOR.Pages
   <link rel='stylesheet' href='https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css'/>
   <style>
     html,body,#map{height:100%;margin:0}
+    .leaflet-pane .leaflet-marker-icon.map-marker-3d{background:transparent;border:0}
+    .marker3d-wrap{position:relative;width:26px;height:34px;transform-style:preserve-3d;animation:markerFloat 2.8s ease-in-out infinite}
+    .marker3d-shadow{position:absolute;left:3px;bottom:1px;width:20px;height:7px;border-radius:50%;background:rgba(9,18,34,.28);filter:blur(1.2px);transform:translateZ(-1px)}
+    .marker3d-stem{position:absolute;left:11px;bottom:5px;width:4px;height:14px;border-radius:5px;background:linear-gradient(180deg,#ffffff,#d9e8ff);box-shadow:0 0 0 1px rgba(12,28,56,.14)}
+    .marker3d-core{position:absolute;left:5px;top:2px;width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 30% 28%,#ffffff 0%,#d7ebff 24%,#6eb4ff 62%,#205fb5 100%);box-shadow:0 3px 10px rgba(16,74,151,.44), inset 0 1px 0 rgba(255,255,255,.85)}
+    .marker3d-glow{position:absolute;left:-1px;top:-4px;width:24px;height:24px;border-radius:50%;background:radial-gradient(circle,#8fd0ff 0%,rgba(143,208,255,.16) 54%,rgba(143,208,255,0) 75%);animation:markerGlow 1.9s ease-out infinite}
+    .marker3d-pulse{position:absolute;left:1px;top:-2px;width:22px;height:22px;border-radius:50%;border:2px solid rgba(73,165,255,.52);animation:markerPulse 1.7s ease-out infinite}
+    .marker3d-wrap.status-critical .marker3d-core{background:radial-gradient(circle at 30% 28%,#fff5f5 0%,#ffd7d7 24%,#ff7f7f 62%,#be1f3b 100%);box-shadow:0 3px 11px rgba(183,34,67,.44), inset 0 1px 0 rgba(255,255,255,.78)}
+    .marker3d-wrap.status-critical .marker3d-glow{background:radial-gradient(circle,#ff9fb3 0%,rgba(255,159,179,.18) 56%,rgba(255,159,179,0) 76%)}
+    .marker3d-wrap.status-critical .marker3d-pulse{border-color:rgba(255,117,145,.58)}
+    .marker3d-wrap.status-major .marker3d-core{background:radial-gradient(circle at 30% 28%,#fff8ef 0%,#ffe0ba 24%,#ffb15a 62%,#c46d1e 100%);box-shadow:0 3px 11px rgba(193,111,30,.42), inset 0 1px 0 rgba(255,255,255,.78)}
+    .marker3d-wrap.status-major .marker3d-glow{background:radial-gradient(circle,#ffc98a 0%,rgba(255,201,138,.2) 56%,rgba(255,201,138,0) 76%)}
+    .marker3d-wrap.status-major .marker3d-pulse{border-color:rgba(255,177,94,.58)}
+    .marker3d-wrap.status-cancel .marker3d-core{background:radial-gradient(circle at 30% 28%,#f6f8fc 0%,#e2e8f2 24%,#aab7c7 62%,#647587 100%);box-shadow:0 3px 9px rgba(52,72,96,.36), inset 0 1px 0 rgba(255,255,255,.78)}
+    .marker3d-wrap.status-cancel .marker3d-glow{background:radial-gradient(circle,#b4c3d8 0%,rgba(180,195,216,.18) 56%,rgba(180,195,216,0) 76%)}
+    .marker3d-wrap.status-cancel .marker3d-pulse{border-color:rgba(170,183,199,.54)}
+    .leaflet-marker-icon.map-marker-3d:hover .marker3d-wrap{animation-duration:1.3s;transform:scale(1.08)}
+    @keyframes markerPulse{0%{transform:scale(.6);opacity:.85}70%{transform:scale(1.45);opacity:.06}100%{transform:scale(1.5);opacity:0}}
+    @keyframes markerGlow{0%,100%{opacity:.74}50%{opacity:.18}}
+    @keyframes markerFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
     .leaflet-popup-content{margin:10px 12px;font:12px 'Segoe UI',sans-serif}
     .tt-card{min-width:270px;max-width:320px}
     .tt-ioh{display:inline-block;margin-bottom:8px;padding:2px 8px;border-radius:999px;background:#eef6ff;border:1px solid #b9d9ff;color:#1e5fa8;font-size:12px;font-weight:700;text-decoration:none}
@@ -391,16 +411,31 @@ namespace NOCREPORTGENERATOR.Pages
         </div>
       </div>`;
     }
+    function markerClass(i){
+      const s=String(i.severity||'').toLowerCase();
+      const st=String(i.status||'').toLowerCase();
+      if(s.includes('critical')) return 'status-critical';
+      if(s.includes('major')) return 'status-major';
+      if(st.includes('cancel')) return 'status-cancel';
+      return 'status-open';
+    }
+    function create3DIcon(i){
+      const cls=markerClass(i);
+      const html=`<div class="marker3d-wrap ${cls}"><div class="marker3d-shadow"></div><div class="marker3d-stem"></div><div class="marker3d-glow"></div><div class="marker3d-pulse"></div><div class="marker3d-core"></div></div>`;
+      return L.divIcon({className:'map-marker-3d',html,iconSize:[26,34],iconAnchor:[13,30],popupAnchor:[0,-22]});
+    }
     function render(data,on){
       cluster.clearLayers();
       if(heat){map.removeLayer(heat);heat=null;}
       const hp=[];
       for(const i of data){
         if(typeof i.latitude!=='number'||typeof i.longitude!=='number') continue;
-        const m=L.marker([i.latitude,i.longitude]);
+        const m=L.marker([i.latitude,i.longitude],{icon:create3DIcon(i),riseOnHover:true});
         m.bindPopup(popupHtml(i),{maxWidth:340});
         cluster.addLayer(m);
-        hp.push([i.latitude,i.longitude,0.6]);
+        const severity=String(i.severity||'').toLowerCase();
+        const weight=severity.includes('critical') ? 1 : severity.includes('major') ? 0.82 : severity.includes('minor') ? 0.68 : 0.6;
+        hp.push([i.latitude,i.longitude,weight]);
       }
       if(on&&hp.length>0){heat=L.heatLayer(hp,{radius:18,blur:15,minOpacity:0.3,maxZoom:13}).addTo(map);}
       if(cluster.getLayers().length>0){
