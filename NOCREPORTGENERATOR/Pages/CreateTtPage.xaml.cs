@@ -30,10 +30,12 @@ namespace NOCREPORTGENERATOR.Pages
         private static readonly HashSet<string> ImageFileExtensions = new(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".bmp", ".webp", ".heic" };
         private CancellationTokenSource? _systemKeyLookupCts;
         private CancellationTokenSource? _coordinateImageParseCts;
+        private CancellationTokenSource? _updateProgressTranslateCts;
         private Dictionary<string, IReadOnlyList<string>> _picBySegmentRoute = new(StringComparer.OrdinalIgnoreCase);
         private List<string> _allSegmentRoutes = new();
         private List<string> _allPicOptions = new();
         private List<LocalFormRecord> _savedForms = new();
+        private List<LocalFormRecord> _filteredSavedForms = new();
         private readonly Dictionary<string, FormTabState> _tabStates = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<string> _tabOrder = new();
         private string? _activeTabId;
@@ -48,6 +50,15 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _statusLinkOptionsLoaded;
         private List<string> _statusLinkOptions = new();
         private readonly List<ImpactListItem> _impactListItems = new();
+        private const string SavedFormsDateAll = "Semua waktu";
+        private const string SavedFormsDateToday = "Hari ini";
+        private const string SavedFormsDate7Days = "7 hari terakhir";
+        private const string SavedFormsDate30Days = "30 hari terakhir";
+        private const string SavedFormsDate90Days = "90 hari terakhir";
+        private const string SavedFormsSortNewest = "Terbaru";
+        private const string SavedFormsSortOldest = "Terlama";
+        private const string SavedFormsSortNameAsc = "Nama A-Z";
+        private const string SavedFormsSortNameDesc = "Nama Z-A";
         private static readonly IReadOnlyList<string> ImpactStatusOptions = new[] { "Down ❌", "Up ✅", "Cancel ⛔" };
         private string _pendingStatusLink = string.Empty;
 
@@ -61,10 +72,12 @@ namespace NOCREPORTGENERATOR.Pages
             DispatchTimeTextBox.Text = FormatDateTime(now);
 
             InitializeTabs();
+            InitializeSavedFormsFilterOptions();
             RefreshImpactListUi();
             SetCoordinatePhotoStatus(string.IsNullOrWhiteSpace(AppSettingsService.GetGeminiApiKey())
                 ? "API key Gemini belum diisi. Isi di halaman Settings."
                 : "Siap proses foto coordinate dengan Gemini AI.");
+            SetUpdateProgressTranslateStatus("Terjemahan menggunakan Gemini AI (konsisten per tab).");
             UpdateTemplatePreview();
             _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
             _ = EnsureAllPicOptionsLoadedAsync();
@@ -296,6 +309,8 @@ namespace NOCREPORTGENERATOR.Pages
                 SystemKey = source.SystemKey,
                 Coordinate = source.Coordinate,
                 UpdateProgress = source.UpdateProgress,
+                LastTranslatedUpdateProgressSource = source.LastTranslatedUpdateProgressSource,
+                LastTranslatedUpdateProgressResult = source.LastTranslatedUpdateProgressResult,
                 DraftName = source.DraftName,
                 ImpactList = CloneImpactList(source.ImpactList)
             };
@@ -905,6 +920,14 @@ namespace NOCREPORTGENERATOR.Pages
             }
         }
 
+        private void SetUpdateProgressTranslateStatus(string text)
+        {
+            if (UpdateProgressTranslateStatusTextBlock is not null)
+            {
+                UpdateProgressTranslateStatusTextBlock.Text = text;
+            }
+        }
+
         private async void SaveLocalButton_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -1293,6 +1316,11 @@ namespace NOCREPORTGENERATOR.Pages
             if (ReferenceEquals(sender, SystemKeyTextBox))
             {
                 _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
+            }
+
+            if (ReferenceEquals(sender, UpdateProgressTextBox))
+            {
+                InvalidateUpdateProgressTranslationCache();
             }
 
             MarkActiveTabDirty();
@@ -2029,7 +2057,9 @@ namespace NOCREPORTGENERATOR.Pages
                 ImpactList = CloneImpactList(_impactListItems),
                 DraftName = SaveNameTextBox.Text?.Trim() ?? string.Empty,
                 SavedRecordId = currentState.SavedRecordId,
-                SavedRecordName = currentState.SavedRecordName
+                SavedRecordName = currentState.SavedRecordName,
+                LastTranslatedUpdateProgressSource = currentState.LastTranslatedUpdateProgressSource,
+                LastTranslatedUpdateProgressResult = currentState.LastTranslatedUpdateProgressResult
             };
         }
 
@@ -2056,6 +2086,11 @@ namespace NOCREPORTGENERATOR.Pages
                 CoordinateTextBox.Text = state.Coordinate;
                 UpdateProgressTextBox.Text = state.UpdateProgress;
                 SaveNameTextBox.Text = state.DraftName;
+                state.LastTranslatedUpdateProgressSource ??= string.Empty;
+                state.LastTranslatedUpdateProgressResult ??= string.Empty;
+                SetUpdateProgressTranslateStatus(string.IsNullOrWhiteSpace(state.LastTranslatedUpdateProgressResult)
+                    ? "Terjemahan menggunakan Gemini AI (konsisten per tab)."
+                    : "Tab ini memiliki cache terjemahan. Klik tombol untuk pakai hasil konsisten.");
                 _impactListItems.Clear();
                 _impactListItems.AddRange(CloneImpactList(state.ImpactList));
                 RefreshImpactListUi();
@@ -2067,6 +2102,108 @@ namespace NOCREPORTGENERATOR.Pages
 
             UpdateTemplatePreview();
             _ = TryAutoFillSegmentRouteFromSystemKeyAsync(keepExistingPic: true, keepExistingSegment: true);
+        }
+
+        private void InvalidateUpdateProgressTranslationCache()
+        {
+            if (string.IsNullOrWhiteSpace(_activeTabId) || !_tabStates.TryGetValue(_activeTabId, out var state))
+            {
+                return;
+            }
+
+            var current = (UpdateProgressTextBox.Text ?? string.Empty).Trim();
+            if (string.Equals(current, state.LastTranslatedUpdateProgressSource, StringComparison.Ordinal) ||
+                string.Equals(current, state.LastTranslatedUpdateProgressResult, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            state.LastTranslatedUpdateProgressSource = string.Empty;
+            state.LastTranslatedUpdateProgressResult = string.Empty;
+            _tabStates[_activeTabId] = state;
+            SetUpdateProgressTranslateStatus("Teks berubah. Cache terjemahan direset.");
+        }
+
+        private async void TranslateUpdateProgressButton_Click(object sender, RoutedEventArgs e)
+        {
+            var source = (UpdateProgressTextBox.Text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                SetUpdateProgressTranslateStatus("Update Progress kosong.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(_activeTabId) || !_tabStates.TryGetValue(_activeTabId, out var state))
+            {
+                state = new FormTabState();
+            }
+
+            if (!string.IsNullOrWhiteSpace(state.LastTranslatedUpdateProgressResult) &&
+                string.Equals(source, state.LastTranslatedUpdateProgressResult, StringComparison.Ordinal))
+            {
+                SetUpdateProgressTranslateStatus("Sudah dalam hasil terjemahan. Tidak diterjemahkan ulang.");
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(state.LastTranslatedUpdateProgressSource) &&
+                !string.IsNullOrWhiteSpace(state.LastTranslatedUpdateProgressResult) &&
+                string.Equals(source, state.LastTranslatedUpdateProgressSource, StringComparison.Ordinal))
+            {
+                UpdateProgressTextBox.Text = state.LastTranslatedUpdateProgressResult;
+                SetUpdateProgressTranslateStatus("Menggunakan hasil terjemahan tersimpan (konsisten).");
+                return;
+            }
+
+            _updateProgressTranslateCts?.Cancel();
+            _updateProgressTranslateCts = new CancellationTokenSource();
+            var token = _updateProgressTranslateCts.Token;
+
+            TranslateUpdateProgressButton.IsEnabled = false;
+            SetUpdateProgressTranslateStatus("Menerjemahkan Update Progress ke English...");
+
+            try
+            {
+                var result = await GeminiProgressTranslatorService.TranslateToEnglishAsync(source, token);
+                if (!result.IsSuccess)
+                {
+                    SetUpdateProgressTranslateStatus(result.Message);
+                    return;
+                }
+
+                var translated = result.Text.Trim();
+                if (string.IsNullOrWhiteSpace(translated))
+                {
+                    SetUpdateProgressTranslateStatus("Hasil terjemahan kosong.");
+                    return;
+                }
+
+                UpdateProgressTextBox.Text = translated;
+
+                if (!string.IsNullOrWhiteSpace(_activeTabId))
+                {
+                    if (_tabStates.TryGetValue(_activeTabId, out var activeState))
+                    {
+                        activeState.LastTranslatedUpdateProgressSource = source;
+                        activeState.LastTranslatedUpdateProgressResult = translated;
+                        _tabStates[_activeTabId] = activeState;
+                    }
+                }
+
+                SetUpdateProgressTranslateStatus("Terjemahan selesai. Teks source disimpan agar hasil tetap konsisten.");
+            }
+            catch (OperationCanceledException)
+            {
+                SetUpdateProgressTranslateStatus("Terjemahan dibatalkan.");
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.TranslateUpdateProgressButton_Click", ex);
+                SetUpdateProgressTranslateStatus("Gagal translate: " + ex.Message);
+            }
+            finally
+            {
+                TranslateUpdateProgressButton.IsEnabled = true;
+            }
         }
 
         private void UpdateActiveTabHeaderFromCurrentForm()
@@ -2339,15 +2476,19 @@ namespace NOCREPORTGENERATOR.Pages
                 var currentSelectedId = (SavedFormsComboBox.SelectedItem as LocalFormRecord)?.Id;
                 var data = await LocalFormStorageService.GetAllAsync();
                 _savedForms = data.Take(MaxSavedFormsInCombo).ToList();
-                SavedFormsComboBox.ItemsSource = _savedForms;
+                ApplySavedFormsFilter();
 
                 var targetId = !string.IsNullOrWhiteSpace(preferredSelectedId) ? preferredSelectedId : currentSelectedId;
                 if (!string.IsNullOrWhiteSpace(targetId))
                 {
-                    var selected = _savedForms.FirstOrDefault(x => string.Equals(x.Id, targetId, StringComparison.OrdinalIgnoreCase));
+                    var selected = _filteredSavedForms.FirstOrDefault(x => string.Equals(x.Id, targetId, StringComparison.OrdinalIgnoreCase));
                     if (selected is not null)
                     {
                         SavedFormsComboBox.SelectedItem = selected;
+                    }
+                    else
+                    {
+                        SavedFormsComboBox.SelectedItem = null;
                     }
                 }
             }
@@ -2355,6 +2496,150 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 DeveloperDiagnostics.LogError("CreateTtPage.RefreshSavedFormsAsync", ex);
             }
+        }
+
+        private void InitializeSavedFormsFilterOptions()
+        {
+            if (SavedFormsDateFilterComboBox is not null)
+            {
+                SavedFormsDateFilterComboBox.ItemsSource = new[]
+                {
+                    SavedFormsDateAll,
+                    SavedFormsDateToday,
+                    SavedFormsDate7Days,
+                    SavedFormsDate30Days,
+                    SavedFormsDate90Days
+                };
+                SavedFormsDateFilterComboBox.SelectedItem = SavedFormsDateAll;
+            }
+
+            if (SavedFormsSortComboBox is not null)
+            {
+                SavedFormsSortComboBox.ItemsSource = new[]
+                {
+                    SavedFormsSortNewest,
+                    SavedFormsSortOldest,
+                    SavedFormsSortNameAsc,
+                    SavedFormsSortNameDesc
+                };
+                SavedFormsSortComboBox.SelectedItem = SavedFormsSortNewest;
+            }
+
+            UpdateSavedFormsFilterSummary();
+        }
+
+        private void SavedFormsSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            ApplySavedFormsFilter();
+        }
+
+        private void SavedFormsFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            ApplySavedFormsFilter();
+        }
+
+        private void ResetSavedFormsFilterButton_Click(object sender, RoutedEventArgs e)
+        {
+            SavedFormsSearchTextBox.Text = string.Empty;
+            SavedFormsDateFilterComboBox.SelectedItem = SavedFormsDateAll;
+            SavedFormsSortComboBox.SelectedItem = SavedFormsSortNewest;
+            ApplySavedFormsFilter();
+        }
+
+        private void ApplySavedFormsFilter()
+        {
+            var query = SavedFormsSearchTextBox?.Text?.Trim() ?? string.Empty;
+            var dateFilter = SavedFormsDateFilterComboBox?.SelectedItem as string ?? SavedFormsDateAll;
+            var sort = SavedFormsSortComboBox?.SelectedItem as string ?? SavedFormsSortNewest;
+
+            IEnumerable<LocalFormRecord> filtered = _savedForms;
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                filtered = filtered.Where(x => MatchDraftQuery(x, query));
+            }
+
+            var now = DateTimeOffset.Now;
+            filtered = dateFilter switch
+            {
+                SavedFormsDateToday => filtered.Where(x => x.SavedAt.LocalDateTime.Date == now.LocalDateTime.Date),
+                SavedFormsDate7Days => filtered.Where(x => x.SavedAt >= now.AddDays(-7)),
+                SavedFormsDate30Days => filtered.Where(x => x.SavedAt >= now.AddDays(-30)),
+                SavedFormsDate90Days => filtered.Where(x => x.SavedAt >= now.AddDays(-90)),
+                _ => filtered
+            };
+
+            filtered = sort switch
+            {
+                SavedFormsSortOldest => filtered.OrderBy(x => x.SavedAt),
+                SavedFormsSortNameAsc => filtered.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(x => x.SavedAt),
+                SavedFormsSortNameDesc => filtered.OrderByDescending(x => x.Name, StringComparer.OrdinalIgnoreCase).ThenByDescending(x => x.SavedAt),
+                _ => filtered.OrderByDescending(x => x.SavedAt)
+            };
+
+            if (SavedFormsComboBox is null)
+            {
+                _filteredSavedForms = filtered.ToList();
+                UpdateSavedFormsFilterSummary();
+                return;
+            }
+
+            var selectedId = (SavedFormsComboBox.SelectedItem as LocalFormRecord)?.Id;
+            _filteredSavedForms = filtered.ToList();
+            SavedFormsComboBox.ItemsSource = _filteredSavedForms;
+
+            if (!string.IsNullOrWhiteSpace(selectedId))
+            {
+                var selected = _filteredSavedForms.FirstOrDefault(x => string.Equals(x.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+                if (selected is not null)
+                {
+                    SavedFormsComboBox.SelectedItem = selected;
+                }
+            }
+
+            UpdateSavedFormsFilterSummary();
+        }
+
+        private void UpdateSavedFormsFilterSummary()
+        {
+            if (SavedFormsFilterSummaryTextBlock is null)
+            {
+                return;
+            }
+
+            SavedFormsFilterSummaryTextBlock.Text = "Draft tampil: " +
+                _filteredSavedForms.Count.ToString(CultureInfo.InvariantCulture) + "/" +
+                _savedForms.Count.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static bool MatchDraftQuery(LocalFormRecord record, string query)
+        {
+            if (record is null || string.IsNullOrWhiteSpace(query))
+            {
+                return true;
+            }
+
+            var q = query.Trim();
+            return ContainsIgnoreCase(record.Name, q) ||
+                ContainsIgnoreCase(record.Title, q) ||
+                ContainsIgnoreCase(record.TtIoh, q) ||
+                ContainsIgnoreCase(record.SegmentRoute, q) ||
+                ContainsIgnoreCase(record.SystemKey, q) ||
+                ContainsIgnoreCase(record.Pic, q) ||
+                ContainsIgnoreCase(record.RootCause, q) ||
+                ContainsIgnoreCase(record.CutPoint, q) ||
+                ContainsIgnoreCase(record.UpdateProgress, q) ||
+                ContainsIgnoreCase(record.StatusLink, q);
+        }
+
+        private static bool ContainsIgnoreCase(string? source, string value)
+        {
+            if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            return source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void ApplySavedForm(LocalFormRecord record)
@@ -2498,6 +2783,8 @@ namespace NOCREPORTGENERATOR.Pages
             public string SystemKey { get; set; } = string.Empty;
             public string Coordinate { get; set; } = string.Empty;
             public string UpdateProgress { get; set; } = string.Empty;
+            public string LastTranslatedUpdateProgressSource { get; set; } = string.Empty;
+            public string LastTranslatedUpdateProgressResult { get; set; } = string.Empty;
             public List<ImpactListItem> ImpactList { get; set; } = new();
         }
     }

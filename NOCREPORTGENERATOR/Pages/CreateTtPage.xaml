@@ -164,6 +164,45 @@
                                     </StackPanel>
                                 </Button>
                             </Grid>
+
+                            <Grid ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="2*" />
+                                    <ColumnDefinition Width="1.3*" />
+                                    <ColumnDefinition Width="1.4*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox
+                                    x:Name="SavedFormsSearchTextBox"
+                                    Grid.Column="0"
+                                    PlaceholderText="Cari draft: nama, judul, TT, segment, PIC, root cause..."
+                                    Style="{StaticResource ShellInputTextBoxStyle}"
+                                    TextChanged="SavedFormsSearchTextBox_TextChanged" />
+                                <ComboBox
+                                    x:Name="SavedFormsDateFilterComboBox"
+                                    Grid.Column="1"
+                                    Style="{StaticResource ShellInputComboBoxStyle}"
+                                    SelectionChanged="SavedFormsFilterComboBox_SelectionChanged" />
+                                <ComboBox
+                                    x:Name="SavedFormsSortComboBox"
+                                    Grid.Column="2"
+                                    Style="{StaticResource ShellInputComboBoxStyle}"
+                                    SelectionChanged="SavedFormsFilterComboBox_SelectionChanged" />
+                                <Button
+                                    Grid.Column="3"
+                                    Click="ResetSavedFormsFilterButton_Click"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB99;" />
+                                        <TextBlock Text="Reset" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <TextBlock
+                                x:Name="SavedFormsFilterSummaryTextBlock"
+                                Style="{StaticResource ShellSectionCaptionStyle}"
+                                Text="Draft tampil: 0/0" />
                         </StackPanel>
                     </Border>
 
@@ -367,15 +406,43 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBox
-                        x:Name="UpdateProgressTextBox"
-                        AcceptsReturn="True"
-                        Header="Update Progress"
-                        MinHeight="180"
-                        PlaceholderText="Masukkan update progress per baris..."
-                        Style="{StaticResource ShellInputTextBoxStyle}"
-                        TextChanged="InputChanged"
-                        TextWrapping="Wrap" />
+                    <StackPanel Spacing="8">
+                        <Grid ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Style="{StaticResource ShellSectionTitleStyle}"
+                                Text="Update Progress" />
+                            <Button
+                                x:Name="TranslateUpdateProgressButton"
+                                Grid.Column="1"
+                                Click="TranslateUpdateProgressButton_Click"
+                                Style="{StaticResource ShellSecondaryButtonStyle}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0E7;" />
+                                    <TextBlock Text="Translate to English" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <TextBox
+                            x:Name="UpdateProgressTextBox"
+                            AcceptsReturn="True"
+                            MinHeight="180"
+                            PlaceholderText="Masukkan update progress per baris..."
+                            Style="{StaticResource ShellInputTextBoxStyle}"
+                            TextChanged="InputChanged"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            x:Name="UpdateProgressTranslateStatusTextBlock"
+                            Foreground="{StaticResource ShellMutedForegroundBrush}"
+                            Style="{StaticResource ShellSectionCaptionStyle}"
+                            Text="Terjemahan menggunakan Gemini AI (konsisten per tab)." />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
