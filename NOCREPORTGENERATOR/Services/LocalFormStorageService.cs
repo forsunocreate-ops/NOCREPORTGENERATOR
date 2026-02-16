@@ -14,6 +14,7 @@ namespace NOCREPORTGENERATOR.Services
     public static class LocalFormStorageService
     {
         private static readonly SemaphoreSlim DbGate = new(1, 1);
+        private static readonly object CacheGate = new();
         private static readonly string DirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "NOCREPORTGENERATOR");
@@ -21,10 +22,23 @@ namespace NOCREPORTGENERATOR.Services
         private static readonly string LegacyJsonPath = Path.Combine(DirectoryPath, "tt_forms.json");
         private static readonly string ConnectionString = "Data Source=" + DbPath + ";Cache=Shared;Pooling=True";
         private static bool _isInitialized;
+        private static List<LocalFormRecord>? _recordsCache;
+        private static bool _isCacheLoaded;
+
+        public static event Action? RecordsChanged;
 
         public static async Task<IReadOnlyList<LocalFormRecord>> GetAllAsync()
         {
             await EnsureInitializedAsync();
+
+            lock (CacheGate)
+            {
+                if (_isCacheLoaded && _recordsCache is not null)
+                {
+                    return _recordsCache;
+                }
+            }
+
             return await Task.Run(async () =>
             {
                 await DbGate.WaitAsync();
@@ -35,13 +49,19 @@ namespace NOCREPORTGENERATOR.Services
                     connection.Open();
                     using var command = connection.CreateCommand();
                     command.CommandText =
-                        "SELECT id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, status_link, pic, root_cause, cut_point, " +
+                        "SELECT id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, finish_date_time, status_link, pic, root_cause, cut_point, " +
                         "show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json " +
                         "FROM tt_forms ORDER BY saved_at DESC;";
                     using var reader = command.ExecuteReader();
                     while (reader.Read())
                     {
                         list.Add(MapRecord(reader));
+                    }
+
+                    lock (CacheGate)
+                    {
+                        _recordsCache = list;
+                        _isCacheLoaded = true;
                     }
 
                     return (IReadOnlyList<LocalFormRecord>)list;
@@ -105,18 +125,22 @@ namespace NOCREPORTGENERATOR.Services
                 return;
             }
 
+            var safeRecord = EnsureRecord(record);
             await EnsureInitializedAsync();
             await DbGate.WaitAsync();
             try
             {
                 using var connection = new SqliteConnection(ConnectionString);
                 connection.Open();
-                UpsertRecord(connection, record);
+                UpsertRecord(connection, safeRecord);
             }
             finally
             {
                 DbGate.Release();
             }
+
+            UpsertCacheRecord(safeRecord);
+            RaiseRecordsChanged();
         }
 
         public static async Task DeleteAsync(string recordId)
@@ -141,6 +165,9 @@ namespace NOCREPORTGENERATOR.Services
             {
                 DbGate.Release();
             }
+
+            RemoveCacheRecord(recordId.Trim());
+            RaiseRecordsChanged();
         }
 
         public static async Task<BulkUpsertResult> BulkUpsertByTtIohAsync(IEnumerable<LocalFormRecord> records)
@@ -234,6 +261,97 @@ namespace NOCREPORTGENERATOR.Services
             {
                 DbGate.Release();
             }
+
+            ApplyBulkUpsertToCache(context.PendingUpserts);
+            if (context.PendingUpserts.Count > 0)
+            {
+                RaiseRecordsChanged();
+            }
+        }
+
+        private static void UpsertCacheRecord(LocalFormRecord record)
+        {
+            lock (CacheGate)
+            {
+                if (!_isCacheLoaded)
+                {
+                    return;
+                }
+
+                _recordsCache ??= new List<LocalFormRecord>();
+                var index = _recordsCache.FindIndex(x => string.Equals(x.Id, record.Id, StringComparison.OrdinalIgnoreCase));
+                var clone = CloneRecord(record);
+
+                if (index >= 0)
+                {
+                    _recordsCache[index] = clone;
+                }
+                else
+                {
+                    _recordsCache.Add(clone);
+                }
+
+                _recordsCache = _recordsCache
+                    .OrderByDescending(x => x.SavedAt)
+                    .ToList();
+            }
+        }
+
+        private static void RemoveCacheRecord(string recordId)
+        {
+            lock (CacheGate)
+            {
+                if (!_isCacheLoaded || _recordsCache is null)
+                {
+                    return;
+                }
+
+                _recordsCache.RemoveAll(x => string.Equals(x.Id, recordId, StringComparison.OrdinalIgnoreCase));
+            }
+        }
+
+        private static void ApplyBulkUpsertToCache(IEnumerable<LocalFormRecord> records)
+        {
+            lock (CacheGate)
+            {
+                if (!_isCacheLoaded)
+                {
+                    return;
+                }
+
+                _recordsCache ??= new List<LocalFormRecord>();
+                foreach (var record in records)
+                {
+                    var safe = EnsureRecord(record);
+                    var index = _recordsCache.FindIndex(x => string.Equals(x.Id, safe.Id, StringComparison.OrdinalIgnoreCase));
+                    var clone = CloneRecord(safe);
+
+                    if (index >= 0)
+                    {
+                        _recordsCache[index] = clone;
+                    }
+                    else
+                    {
+                        _recordsCache.Add(clone);
+                    }
+                }
+
+                _recordsCache = _recordsCache
+                    .OrderByDescending(x => x.SavedAt)
+                    .ToList();
+            }
+        }
+
+        private static void RaiseRecordsChanged()
+        {
+            try
+            {
+                RecordsChanged?.Invoke();
+            }
+            catch
+            {
+                // Listener errors should not break storage operations.
+            }
         }
 
         private static string NormalizeKey(string? value)
@@ -269,6 +387,7 @@ namespace NOCREPORTGENERATOR.Services
                     "title TEXT, " +
                     "occur_date_time TEXT, " +
                     "dispatch_date_time TEXT, " +
+                    "finish_date_time TEXT, " +
                     "status_link TEXT, " +
                     "pic TEXT, " +
                     "root_cause TEXT, " +
@@ -284,6 +403,7 @@ namespace NOCREPORTGENERATOR.Services
                 command.ExecuteNonQuery();
                 EnsureColumnExists(connection, "tt_forms", "status_link", "TEXT");
                 EnsureColumnExists(connection, "tt_forms", "impact_list_json", "TEXT");
+                EnsureColumnExists(connection, "tt_forms", "finish_date_time", "TEXT");
 
                 using var indexCommand = connection.CreateCommand();
                 indexCommand.CommandText =
@@ -353,12 +473,12 @@ namespace NOCREPORTGENERATOR.Services
 
             command.CommandText =
                 "INSERT INTO tt_forms " +
-                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json) " +
+                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, finish_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json) " +
                 "VALUES " +
-                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $system_key, $coordinate, $update_progress, $impact_list_json) " +
+                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $finish_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $system_key, $coordinate, $update_progress, $impact_list_json) " +
                 "ON CONFLICT(id) DO UPDATE SET " +
                 "name = excluded.name, saved_at = excluded.saved_at, tt_ioh = excluded.tt_ioh, title = excluded.title, occur_date_time = excluded.occur_date_time, " +
-                "dispatch_date_time = excluded.dispatch_date_time, status_link = excluded.status_link, pic = excluded.pic, root_cause = excluded.root_cause, cut_point = excluded.cut_point, " +
+                "dispatch_date_time = excluded.dispatch_date_time, finish_date_time = excluded.finish_date_time, status_link = excluded.status_link, pic = excluded.pic, root_cause = excluded.root_cause, cut_point = excluded.cut_point, " +
                 "show_segment_route = excluded.show_segment_route, show_system_key = excluded.show_system_key, segment_route = excluded.segment_route, " +
                 "system_key = excluded.system_key, coordinate = excluded.coordinate, update_progress = excluded.update_progress, impact_list_json = excluded.impact_list_json;";
 
@@ -369,6 +489,7 @@ namespace NOCREPORTGENERATOR.Services
             command.Parameters.AddWithValue("$title", safe.Title);
             command.Parameters.AddWithValue("$occur_date_time", ToStorageDate(safe.OccurDateTime));
             command.Parameters.AddWithValue("$dispatch_date_time", ToStorageDate(safe.DispatchDateTime));
+            command.Parameters.AddWithValue("$finish_date_time", ToStorageDate(safe.FinishDateTime));
             command.Parameters.AddWithValue("$status_link", safe.StatusLink);
             command.Parameters.AddWithValue("$pic", safe.Pic);
             command.Parameters.AddWithValue("$root_cause", safe.RootCause);
@@ -394,17 +515,20 @@ namespace NOCREPORTGENERATOR.Services
                 Title = SafeGetString(reader, 4, string.Empty),
                 OccurDateTime = ParseStorageDate(SafeGetString(reader, 5, string.Empty), DateTimeOffset.Now),
                 DispatchDateTime = ParseStorageDate(SafeGetString(reader, 6, string.Empty), DateTimeOffset.Now),
-                StatusLink = SafeGetString(reader, 7, string.Empty),
-                Pic = SafeGetString(reader, 8, string.Empty),
-                RootCause = SafeGetString(reader, 9, string.Empty),
-                CutPoint = SafeGetString(reader, 10, string.Empty),
-                ShowSegmentRoute = SafeGetInt(reader, 11, 1) != 0,
-                ShowSystemKey = SafeGetInt(reader, 12, 1) != 0,
-                SegmentRoute = SafeGetString(reader, 13, string.Empty),
-                SystemKey = SafeGetString(reader, 14, string.Empty),
-                Coordinate = SafeGetString(reader, 15, string.Empty),
-                UpdateProgress = SafeGetString(reader, 16, string.Empty),
-                ImpactList = DeserializeImpactList(SafeGetString(reader, 17, string.Empty))
+                FinishDateTime = ParseStorageDate(
+                    SafeGetString(reader, 7, string.Empty),
+                    ParseStorageDate(SafeGetString(reader, 6, string.Empty), DateTimeOffset.Now)),
+                StatusLink = SafeGetString(reader, 8, string.Empty),
+                Pic = SafeGetString(reader, 9, string.Empty),
+                RootCause = SafeGetString(reader, 10, string.Empty),
+                CutPoint = SafeGetString(reader, 11, string.Empty),
+                ShowSegmentRoute = SafeGetInt(reader, 12, 1) != 0,
+                ShowSystemKey = SafeGetInt(reader, 13, 1) != 0,
+                SegmentRoute = SafeGetString(reader, 14, string.Empty),
+                SystemKey = SafeGetString(reader, 15, string.Empty),
+                Coordinate = SafeGetString(reader, 16, string.Empty),
+                UpdateProgress = SafeGetString(reader, 17, string.Empty),
+                ImpactList = DeserializeImpactList(SafeGetString(reader, 18, string.Empty))
             };
         }
 
@@ -419,6 +543,11 @@ namespace NOCREPORTGENERATOR.Services
                 Title = record.Title ?? string.Empty,
                 OccurDateTime = record.OccurDateTime == default ? DateTimeOffset.Now : record.OccurDateTime,
                 DispatchDateTime = record.DispatchDateTime == default ? (record.OccurDateTime == default ? DateTimeOffset.Now : record.OccurDateTime) : record.DispatchDateTime,
+                FinishDateTime = record.FinishDateTime == default
+                    ? (record.DispatchDateTime == default
+                        ? (record.OccurDateTime == default ? DateTimeOffset.Now : record.OccurDateTime)
+                        : record.DispatchDateTime)
+                    : record.FinishDateTime,
                 StatusLink = record.StatusLink ?? string.Empty,
                 Pic = record.Pic ?? string.Empty,
                 RootCause = record.RootCause ?? string.Empty,
@@ -429,6 +558,32 @@ namespace NOCREPORTGENERATOR.Services
                 SystemKey = record.SystemKey ?? string.Empty,
                 Coordinate = record.Coordinate ?? string.Empty,
                 UpdateProgress = record.UpdateProgress ?? string.Empty,
+                ImpactList = NormalizeImpactList(record.ImpactList)
+            };
+        }
+
+        private static LocalFormRecord CloneRecord(LocalFormRecord record)
+        {
+            return new LocalFormRecord
+            {
+                Id = record.Id,
+                Name = record.Name,
+                SavedAt = record.SavedAt,
+                TtIoh = record.TtIoh,
+                Title = record.Title,
+                OccurDateTime = record.OccurDateTime,
+                DispatchDateTime = record.DispatchDateTime,
+                FinishDateTime = record.FinishDateTime,
+                StatusLink = record.StatusLink,
+                Pic = record.Pic,
+                RootCause = record.RootCause,
+                CutPoint = record.CutPoint,
+                ShowSegmentRoute = record.ShowSegmentRoute,
+                ShowSystemKey = record.ShowSystemKey,
+                SegmentRoute = record.SegmentRoute,
+                SystemKey = record.SystemKey,
+                Coordinate = record.Coordinate,
+                UpdateProgress = record.UpdateProgress,
                 ImpactList = NormalizeImpactList(record.ImpactList)
             };
         }

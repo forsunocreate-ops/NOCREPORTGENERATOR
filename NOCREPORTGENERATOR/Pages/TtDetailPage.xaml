@@ -6,6 +6,12 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    <Page.Transitions>
+        <TransitionCollection>
+            <NavigationThemeTransition />
+            <EntranceThemeTransition FromVerticalOffset="16" />
+        </TransitionCollection>
+    </Page.Transitions>
 
     <Grid Padding="16" RowSpacing="12">
         <Grid.RowDefinitions>
@@ -15,11 +21,7 @@
 
         <Border
             Grid.Row="0"
-            Padding="14"
-            Background="{StaticResource ShellHeroGradientBrush}"
-            BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="14">
+            Style="{StaticResource ShellPageHeaderCardStyle}">
             <Grid ColumnSpacing="10">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -36,9 +38,7 @@
                     <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Detail Record" />
                     <TextBlock
                         x:Name="HeaderTitleTextBlock"
-                        FontSize="28"
-                        FontWeight="SemiBold"
-                        Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                        Style="{StaticResource ShellHeroTitleTextStyle}"
                         Text="Detail TT" />
                     <TextBlock
                         x:Name="HeaderSubTitleTextBlock"
@@ -51,12 +51,15 @@
         <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Spacing="10">
-                    <Grid ColumnSpacing="10" RowSpacing="8">
+                    <Border Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Grid ColumnSpacing="10" RowSpacing="8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -84,26 +87,32 @@
                         <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Dispatch Time" />
                         <TextBlock x:Name="DispatchTimeTextBlock" Grid.Row="3" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="PIC" />
-                        <TextBlock x:Name="PicTextBlock" Grid.Row="4" Grid.Column="1" Text="-" />
+                        <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Finish Time" />
+                        <TextBlock x:Name="FinishTimeTextBlock" Grid.Row="4" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Status Link" />
-                        <TextBlock x:Name="StatusLinkTextBlock" Grid.Row="5" Grid.Column="1" Text="-" />
+                        <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="MTTR" />
+                        <TextBlock x:Name="MttrTextBlock" Grid.Row="5" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Segment Route" />
-                        <TextBlock x:Name="SegmentRouteTextBlock" Grid.Row="6" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="PIC" />
+                        <TextBlock x:Name="PicTextBlock" Grid.Row="6" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="System Key" />
-                        <TextBlock x:Name="SystemKeyTextBlock" Grid.Row="7" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <TextBlock Grid.Row="7" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Status Link" />
+                        <TextBlock x:Name="StatusLinkTextBlock" Grid.Row="7" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Root Cause" />
-                        <TextBlock x:Name="RootCauseTextBlock" Grid.Row="8" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Segment Route" />
+                        <TextBlock x:Name="SegmentRouteTextBlock" Grid.Row="8" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
 
-                        <TextBlock Grid.Row="9" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Cut Point" />
-                        <TextBlock x:Name="CutPointTextBlock" Grid.Row="9" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <TextBlock Grid.Row="9" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="System Key" />
+                        <TextBlock x:Name="SystemKeyTextBlock" Grid.Row="9" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
 
-                        <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Coordinate" />
-                        <StackPanel Grid.Row="10" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <TextBlock Grid.Row="10" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Root Cause" />
+                        <TextBlock x:Name="RootCauseTextBlock" Grid.Row="10" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+
+                        <TextBlock Grid.Row="11" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Cut Point" />
+                        <TextBlock x:Name="CutPointTextBlock" Grid.Row="11" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+
+                        <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Coordinate" />
+                        <StackPanel Grid.Row="12" Grid.Column="1" Orientation="Horizontal" Spacing="8">
                             <TextBlock x:Name="CoordinateTextBlock" VerticalAlignment="Center" Text="-" TextWrapping="WrapWholeWords" />
                             <Button
                                 x:Name="OpenLiveMapButton"
@@ -113,20 +122,26 @@
                             </Button>
                         </StackPanel>
 
-                        <TextBlock Grid.Row="11" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Saved At" />
-                        <TextBlock x:Name="SavedAtTextBlock" Grid.Row="11" Grid.Column="1" Text="-" />
+                        <TextBlock Grid.Row="13" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Saved At" />
+                        <TextBlock x:Name="SavedAtTextBlock" Grid.Row="13" Grid.Column="1" Text="-" />
 
-                        <TextBlock Grid.Row="12" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Draft Name" />
-                        <TextBlock x:Name="DraftNameTextBlock" Grid.Row="12" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
-                    </Grid>
+                        <TextBlock Grid.Row="14" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Draft Name" />
+                        <TextBlock x:Name="DraftNameTextBlock" Grid.Row="14" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        </Grid>
+                    </Border>
 
-                    <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Update Progress" />
-                    <TextBox
-                        x:Name="UpdateProgressTextBox"
-                        AcceptsReturn="True"
-                        IsReadOnly="True"
-                        MinHeight="220"
-                        TextWrapping="Wrap" />
+                    <Border Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Update Progress" />
+                            <TextBox
+                                x:Name="UpdateProgressTextBox"
+                                AcceptsReturn="True"
+                                IsReadOnly="True"
+                                MinHeight="220"
+                                Style="{StaticResource ShellInputTextBoxStyle}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>

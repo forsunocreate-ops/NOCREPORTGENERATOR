@@ -70,6 +70,7 @@ namespace NOCREPORTGENERATOR.Pages
             var now = DateTimeOffset.Now;
             OccurTimeTextBox.Text = FormatDateTime(now);
             DispatchTimeTextBox.Text = FormatDateTime(now);
+            FinishTimeTextBox.Text = FormatDateTime(now);
 
             InitializeTabs();
             InitializeSavedFormsFilterOptions();
@@ -268,6 +269,7 @@ namespace NOCREPORTGENERATOR.Pages
                 Header = "Draft " + (_draftTabCounter + 1),
                 OccurDateTime = now,
                 DispatchDateTime = now,
+                FinishDateTime = now,
                 ShowSegmentRoute = true,
                 ShowSystemKey = true
             };
@@ -299,6 +301,7 @@ namespace NOCREPORTGENERATOR.Pages
                 Title = source.Title,
                 OccurDateTime = source.OccurDateTime,
                 DispatchDateTime = source.DispatchDateTime,
+                FinishDateTime = source.FinishDateTime,
                 StatusLink = source.StatusLink,
                 Pic = source.Pic,
                 RootCause = source.RootCause,
@@ -1070,6 +1073,7 @@ namespace NOCREPORTGENERATOR.Pages
         {
             var occur = ParseOrFallbackDateTime(OccurTimeTextBox.Text, DateTimeOffset.Now);
             var dispatch = ParseOrFallbackDateTime(DispatchTimeTextBox.Text, DateTimeOffset.Now);
+            var finish = ParseOrFallbackDateTime(FinishTimeTextBox.Text, dispatch);
 
             return new LocalFormRecord
             {
@@ -1079,6 +1083,7 @@ namespace NOCREPORTGENERATOR.Pages
                 Title = TitleTextBox.Text?.Trim() ?? string.Empty,
                 OccurDateTime = occur,
                 DispatchDateTime = dispatch,
+                FinishDateTime = finish,
                 StatusLink = GetSelectedStatusLink(),
                 Pic = PicAutoSuggestBox.Text?.Trim() ?? string.Empty,
                 RootCause = RootCauseTextBox.Text?.Trim() ?? string.Empty,
@@ -1202,6 +1207,7 @@ namespace NOCREPORTGENERATOR.Pages
             if (dispatchDate.HasValue)
             {
                 DispatchTimeTextBox.Text = FormatDateTime(dispatchDate.Value);
+                FinishTimeTextBox.Text = FormatDateTime(dispatchDate.Value);
             }
 
             ApplyStatusLinkSelection("Open");
@@ -1813,6 +1819,10 @@ namespace NOCREPORTGENERATOR.Pages
             var statusLinkDisplay = FormatMainStatusLinkForPreview(statusLink);
             var occurTime = GetDateTimePreviewValue(OccurTimeTextBox?.Text, DateTimeOffset.Now);
             var dispatchTime = GetDateTimePreviewValue(DispatchTimeTextBox?.Text, DateTimeOffset.Now);
+            var dispatchDateTime = ParseOrFallbackDateTime(DispatchTimeTextBox?.Text, DateTimeOffset.Now);
+            var finishDateTime = ParseOrFallbackDateTime(FinishTimeTextBox?.Text, dispatchDateTime);
+            var finishTime = GetDateTimePreviewValue(FinishTimeTextBox?.Text, dispatchDateTime);
+            var mttr = FormatMttr(dispatchDateTime, finishDateTime);
             var pic = PicAutoSuggestBox?.Text?.Trim() ?? string.Empty;
             var rootCause = RootCauseTextBox?.Text?.Trim() ?? string.Empty;
             var cutPoint = CutPointTextBox?.Text?.Trim() ?? string.Empty;
@@ -1832,6 +1842,8 @@ namespace NOCREPORTGENERATOR.Pages
                 (string.IsNullOrWhiteSpace(statusLinkDisplay) ? string.Empty : "Status Link = " + statusLinkDisplay + Environment.NewLine) +
                 "Occur Time = " + occurTime + Environment.NewLine +
                 "Dispacth Time = " + dispatchTime + Environment.NewLine +
+                "Finish Time = " + finishTime + Environment.NewLine +
+                "MTTR = " + mttr + Environment.NewLine +
                 "PIC = " + pic + Environment.NewLine +
                 "Rootcause = " + rootCause + Environment.NewLine +
                 "Cut Point = " + cutPoint + Environment.NewLine +
@@ -1842,6 +1854,7 @@ namespace NOCREPORTGENERATOR.Pages
                 updateProgress;
 
             TemplatePreviewTextBox.Text = preview;
+            MttrTextBox.Text = mttr;
         }
 
         private static string FormatDateTime(DateTimeOffset value)
@@ -1901,6 +1914,26 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             return false;
+        }
+
+        private static string FormatMttr(DateTimeOffset dispatch, DateTimeOffset finish)
+        {
+            if (dispatch == default || finish == default || finish < dispatch)
+            {
+                return "-";
+            }
+
+            var duration = finish - dispatch;
+            var days = (int)duration.TotalDays;
+            var hours = duration.Hours;
+            var minutes = duration.Minutes;
+
+            return days > 0
+                ? days.ToString(CultureInfo.InvariantCulture) + "d " +
+                  hours.ToString(CultureInfo.InvariantCulture) + "h " +
+                  minutes.ToString(CultureInfo.InvariantCulture) + "m"
+                : ((int)duration.TotalHours).ToString(CultureInfo.InvariantCulture) + "h " +
+                  minutes.ToString(CultureInfo.InvariantCulture) + "m";
         }
 
         private async Task TryAutoFillSegmentRouteFromSystemKeyAsync(bool keepExistingPic = false, bool keepExistingSegment = false)
@@ -2036,6 +2069,7 @@ namespace NOCREPORTGENERATOR.Pages
         {
             var occur = ParseOrFallbackDateTime(OccurTimeTextBox.Text, DateTimeOffset.Now);
             var dispatch = ParseOrFallbackDateTime(DispatchTimeTextBox.Text, DateTimeOffset.Now);
+            var finish = ParseOrFallbackDateTime(FinishTimeTextBox.Text, dispatch);
             var currentState = GetActiveTabStateOrDefault();
 
             return new FormTabState
@@ -2044,6 +2078,7 @@ namespace NOCREPORTGENERATOR.Pages
                 Title = TitleTextBox.Text?.Trim() ?? string.Empty,
                 OccurDateTime = occur,
                 DispatchDateTime = dispatch,
+                FinishDateTime = finish,
                 StatusLink = GetSelectedStatusLink(),
                 Pic = PicAutoSuggestBox.Text?.Trim() ?? string.Empty,
                 RootCause = RootCauseTextBox.Text?.Trim() ?? string.Empty,
@@ -2074,6 +2109,7 @@ namespace NOCREPORTGENERATOR.Pages
                 TitleTextBox.Text = state.Title;
                 OccurTimeTextBox.Text = FormatDateTime(state.OccurDateTime);
                 DispatchTimeTextBox.Text = FormatDateTime(state.DispatchDateTime);
+                FinishTimeTextBox.Text = FormatDateTime(state.FinishDateTime == default ? state.DispatchDateTime : state.FinishDateTime);
                 ApplyStatusLinkSelection(state.StatusLink);
                 PicAutoSuggestBox.Text = state.Pic;
                 RootCauseTextBox.Text = state.RootCause;
@@ -2653,6 +2689,7 @@ namespace NOCREPORTGENERATOR.Pages
                 TitleTextBox.Text = record.Title;
                 OccurTimeTextBox.Text = FormatDateTime(record.OccurDateTime);
                 DispatchTimeTextBox.Text = FormatDateTime(record.DispatchDateTime);
+                FinishTimeTextBox.Text = FormatDateTime(record.FinishDateTime == default ? record.DispatchDateTime : record.FinishDateTime);
                 ApplyStatusLinkSelection(record.StatusLink);
                 RootCauseTextBox.Text = record.RootCause;
                 CutPointTextBox.Text = record.CutPoint;
@@ -2773,6 +2810,7 @@ namespace NOCREPORTGENERATOR.Pages
             public string Title { get; set; } = string.Empty;
             public DateTimeOffset OccurDateTime { get; set; }
             public DateTimeOffset DispatchDateTime { get; set; }
+            public DateTimeOffset FinishDateTime { get; set; }
             public string StatusLink { get; set; } = string.Empty;
             public string Pic { get; set; } = string.Empty;
             public string RootCause { get; set; } = string.Empty;

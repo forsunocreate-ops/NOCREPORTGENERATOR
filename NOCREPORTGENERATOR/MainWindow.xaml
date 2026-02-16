@@ -30,9 +30,9 @@
                         <AdaptiveTrigger MinWindowWidth="1200" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="ShellContentGrid.Padding" Value="16,10,16,16" />
+                        <Setter Target="ShellContentGrid.Padding" Value="18,12,18,18" />
                         <Setter Target="ShellSidebarColumn.Width" Value="318" />
-                        <Setter Target="ShellSidebarBorder.Margin" Value="0,0,14,0" />
+                        <Setter Target="ShellSidebarBorder.Margin" Value="0,0,16,0" />
                         <Setter Target="SidebarWorkspaceCard.Visibility" Value="Visible" />
                         <Setter Target="DashboardNavText.Visibility" Value="Visible" />
                         <Setter Target="CreateTtNavText.Visibility" Value="Visible" />
@@ -46,8 +46,8 @@
                         <AdaptiveTrigger MinWindowWidth="0" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="ShellContentGrid.Padding" Value="10,6,10,10" />
-                        <Setter Target="ShellSidebarColumn.Width" Value="90" />
+                        <Setter Target="ShellContentGrid.Padding" Value="10,8,10,10" />
+                        <Setter Target="ShellSidebarColumn.Width" Value="96" />
                         <Setter Target="ShellSidebarBorder.Margin" Value="0,0,10,0" />
                         <Setter Target="SidebarWorkspaceCard.Visibility" Value="Collapsed" />
                         <Setter Target="DashboardNavText.Visibility" Value="Collapsed" />
@@ -55,13 +55,16 @@
                         <Setter Target="LiveMapNavText.Visibility" Value="Collapsed" />
                         <Setter Target="HistoryTtNavText.Visibility" Value="Collapsed" />
                         <Setter Target="SettingsNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="WindowSubtitleTextBlock.Visibility" Value="Collapsed" />
+                        <Setter Target="CurrentPageTitleTextBlock.FontSize" Value="24" />
+                        <Setter Target="WorkspaceBadgeBorder.Visibility" Value="Collapsed" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="46" />
+            <RowDefinition Height="52" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -69,24 +72,24 @@
         <Grid
             x:Name="AppTitleBarDragRegion"
             Grid.Row="0"
-            Padding="12,4,160,4"
-            Background="Transparent">
+            Padding="16,6,160,6"
+            Background="#1AFFFFFF">
             <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock
-                    FontSize="20"
+                    FontSize="19"
                     FontWeight="SemiBold"
                     Foreground="{StaticResource ShellTitleForegroundBrush}"
                     Text="NOC Report Generator" />
                 <TextBlock
                     x:Name="WindowSubtitleTextBlock"
-                    Visibility="Collapsed"
+                    Visibility="Visible"
                     FontSize="11"
                     Foreground="{StaticResource ShellMutedForegroundBrush}"
                     Text="Network incident template workspace" />
             </StackPanel>
         </Grid>
 
-        <Grid x:Name="ShellContentGrid" Grid.Row="1" Padding="16,10,16,16">
+        <Grid x:Name="ShellContentGrid" Grid.Row="1" Padding="16,12,16,16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="ShellSidebarColumn" Width="318" />
                 <ColumnDefinition Width="*" />
@@ -108,11 +111,7 @@
                     <Border
                         x:Name="SidebarWorkspaceCard"
                         Grid.Row="0"
-                        Padding="14"
-                        Background="{StaticResource ShellHeroGradientBrush}"
-                        BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="14">
+                        Style="{StaticResource ShellPageHeaderCardStyle}">
                         <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -168,7 +167,7 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="1" Margin="0,14,0,0" Spacing="4">
+                    <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="4">
                         <TextBlock
                             Margin="6,0,0,4"
                             Foreground="{StaticResource ShellMutedForegroundBrush}"
@@ -233,8 +232,8 @@
 
                     <Border
                         Grid.Row="3"
-                        Padding="10"
-                        Background="#55FFFFFF"
+                        Padding="12"
+                        Background="#66FFFFFF"
                         BorderBrush="{StaticResource ShellPanelBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="12">
@@ -271,11 +270,7 @@
                     <Border
                         x:Name="ContentHeaderBorder"
                         Grid.Row="0"
-                        Padding="14"
-                        Background="{StaticResource ShellHeroGradientBrush}"
-                        BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="14">
+                        Style="{StaticResource ShellPageHeaderCardStyle}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -289,17 +284,18 @@
                                     Text="Current Module" />
                                 <TextBlock
                                     x:Name="CurrentPageTitleTextBlock"
-                                    FontSize="28"
+                                    FontSize="30"
                                     FontWeight="SemiBold"
                                     Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
-                                    Text="Dashboard" />
+                                    Text="Dashboard"
+                                    TextTrimming="CharacterEllipsis" />
                             </StackPanel>
 
                             <StackPanel
                                 Grid.Column="1"
                                 HorizontalAlignment="Right"
                                 Orientation="Horizontal"
-                                Spacing="8"
+                                Spacing="10"
                                 VerticalAlignment="Center">
                                 <Button
                                     x:Name="HeaderImportButton"
@@ -323,10 +319,18 @@
                                     </StackPanel>
                                 </Button>
 
-                                <TextBlock
-                                    VerticalAlignment="Center"
-                                    Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                                    Text="WinUIEx Shell" />
+                                <Border
+                                    x:Name="WorkspaceBadgeBorder"
+                                    Padding="10,5"
+                                    Background="#33FFFFFF"
+                                    BorderBrush="#55FFFFFF"
+                                    BorderThickness="1"
+                                    CornerRadius="10">
+                                    <TextBlock
+                                        VerticalAlignment="Center"
+                                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                                        Text="NOC Workspace" />
+                                </Border>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -356,7 +360,7 @@
             x:Name="ImportProgressBorder"
             Grid.Row="2"
             Margin="14,0,14,10"
-            Padding="10,8"
+            Padding="12,10"
             Background="#CCFFFFFF"
             BorderBrush="{StaticResource ShellPanelBorderBrush}"
             BorderThickness="1"

@@ -27,6 +27,7 @@ namespace NOCREPORTGENERATOR.Services
         private const int ColCutPoint = 10;      // K
         private const int ColProgress = 11;      // L
         private const int ColOccur = 12;         // M
+        private const int ColFinish = 13;        // N
         private const int ColDispatch = 15;      // P
         private const int ColDetail = 17;        // R
         private const int ColSpecific = 19;      // T
@@ -216,6 +217,7 @@ namespace NOCREPORTGENERATOR.Services
 
             var occur = ParseDateTimeOffset(reader.GetValue(ColOccur)) ?? DateTimeOffset.Now;
             var dispatch = ParseDateTimeOffset(reader.GetValue(ColDispatch)) ?? occur;
+            var finish = ParseDateTimeOffset(reader.GetValue(ColFinish)) ?? dispatch;
             var detail = GetText(reader, ColDetail);
             var specific = GetText(reader, ColSpecific);
             var rootCause = CombineRootCause(detail, specific);
@@ -231,6 +233,7 @@ namespace NOCREPORTGENERATOR.Services
                 Title = GetText(reader, ColTitle),
                 OccurDateTime = occur,
                 DispatchDateTime = dispatch,
+                FinishDateTime = finish,
                 StatusLink = NormalizeStatusLink(GetText(reader, ColStatusLink)),
                 Pic = GetText(reader, ColPic),
                 RootCause = rootCause,

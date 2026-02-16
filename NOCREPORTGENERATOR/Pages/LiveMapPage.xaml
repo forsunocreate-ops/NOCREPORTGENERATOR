@@ -14,7 +14,8 @@
         </TransitionCollection>
     </Page.Transitions>
 
-    <Grid x:Name="LiveMapRootGrid" Padding="16" RowSpacing="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="LiveMapRootGrid" Padding="16" RowSpacing="12">
         <Grid.ChildrenTransitions>
             <TransitionCollection>
                 <EntranceThemeTransition FromVerticalOffset="18" IsStaggeringEnabled="True" />
@@ -57,10 +58,23 @@
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource ShellGlassCardStyle}">
+        <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
+            <StackPanel Spacing="4">
+                <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Geo Monitoring" />
+                <TextBlock
+                    Style="{StaticResource ShellHeroTitleTextStyle}"
+                    Text="Live Map Incident" />
+                <TextBlock
+                    Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                    Text="Pantau titik gangguan, filter lintas waktu, lalu export untuk analisis lanjutan." />
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
             <Grid ColumnSpacing="10" RowSpacing="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -97,10 +111,14 @@
                     </Button>
                 </StackPanel>
 
-                <Grid
+                <ScrollViewer
                     Grid.Row="1"
                     Grid.ColumnSpan="2"
-                    ColumnSpacing="8">
+                    HorizontalScrollBarVisibility="Auto"
+                    VerticalScrollBarVisibility="Disabled">
+                    <Grid
+                        ColumnSpacing="8"
+                        MinWidth="980">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="170" />
@@ -120,6 +138,7 @@
                         x:Name="FromDatePicker"
                         Grid.Column="1"
                         PlaceholderText="Pilih tanggal"
+                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
                         VerticalAlignment="Center"
                         DateChanged="FromDatePicker_DateChanged" />
 
@@ -131,6 +150,7 @@
                         x:Name="ToDatePicker"
                         Grid.Column="3"
                         PlaceholderText="Pilih tanggal"
+                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
                         VerticalAlignment="Center"
                         DateChanged="ToDatePicker_DateChanged" />
 
@@ -138,6 +158,7 @@
                         x:Name="StatusFilterComboBox"
                         Grid.Column="4"
                         PlaceholderText="Status"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
                         VerticalAlignment="Center"
                         SelectionChanged="StatusFilterComboBox_SelectionChanged" />
 
@@ -145,6 +166,7 @@
                         x:Name="SeverityFilterComboBox"
                         Grid.Column="5"
                         PlaceholderText="Severity"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
                         VerticalAlignment="Center"
                         SelectionChanged="SeverityFilterComboBox_SelectionChanged" />
 
@@ -170,57 +192,71 @@
                             <TextBlock Text="Export CSV" />
                         </StackPanel>
                     </Button>
-                </Grid>
+                    </Grid>
+                </ScrollViewer>
 
-                <Grid
+                <Expander
                     Grid.Row="2"
                     Grid.ColumnSpan="2"
-                    ColumnSpacing="8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="220" />
-                        <ColumnDefinition Width="180" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                    Header="Advanced Smart Filter"
+                    IsExpanded="True">
+                    <ScrollViewer
+                        Margin="0,8,0,0"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Disabled">
+                        <Grid
+                            ColumnSpacing="8"
+                            MinWidth="940">
+                            <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                    <AutoSuggestBox
-                        x:Name="SmartFilterAutoSuggestBox"
-                        Grid.Column="0"
-                        PlaceholderText="Smart filter: tt:INC-..., seg:jakarta, cp:otdr, from:2026-02-01 to:2026-02-13"
-                        QuerySubmitted="SmartFilterAutoSuggestBox_QuerySubmitted"
-                        SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
-                        TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
+                        <AutoSuggestBox
+                            x:Name="SmartFilterAutoSuggestBox"
+                            Grid.Column="0"
+                            PlaceholderText="Smart filter: tt:INC-..., seg:jakarta, cp:otdr, from:2026-02-01 to:2026-02-13"
+                            Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                            QuerySubmitted="SmartFilterAutoSuggestBox_QuerySubmitted"
+                            SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
+                            TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
 
-                    <ComboBox
-                        x:Name="SegmentRouteFilterComboBox"
-                        Grid.Column="1"
-                        IsEditable="True"
-                        IsTextSearchEnabled="True"
-                        PlaceholderText="Segment Route"
-                        SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
+                        <ComboBox
+                            x:Name="SegmentRouteFilterComboBox"
+                            Grid.Column="1"
+                            IsEditable="True"
+                            IsTextSearchEnabled="True"
+                            PlaceholderText="Segment Route"
+                            Style="{StaticResource ShellInputComboBoxStyle}"
+                            SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
 
-                    <ComboBox
-                        x:Name="QuickFilterComboBox"
-                        Grid.Column="2"
-                        SelectionChanged="QuickFilterComboBox_SelectionChanged" />
+                        <ComboBox
+                            x:Name="QuickFilterComboBox"
+                            Grid.Column="2"
+                            Style="{StaticResource ShellInputComboBoxStyle}"
+                            SelectionChanged="QuickFilterComboBox_SelectionChanged" />
 
-                    <Button
-                        x:Name="ApplyFilterButton"
-                        Grid.Column="3"
-                        Click="ApplyFilterButton_Click"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <TextBlock Text="Apply Filter" />
-                    </Button>
+                        <Button
+                            x:Name="ApplyFilterButton"
+                            Grid.Column="3"
+                            Click="ApplyFilterButton_Click"
+                            Style="{StaticResource ShellSecondaryButtonStyle}">
+                            <TextBlock Text="Apply Filter" />
+                        </Button>
 
-                    <Button
-                        x:Name="ClearFilterButton"
-                        Grid.Column="4"
-                        Click="ClearFilterButton_Click"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <TextBlock Text="Clear" />
-                    </Button>
-                </Grid>
+                        <Button
+                            x:Name="ClearFilterButton"
+                            Grid.Column="4"
+                            Click="ClearFilterButton_Click"
+                            Style="{StaticResource ShellSecondaryButtonStyle}">
+                            <TextBlock Text="Clear" />
+                        </Button>
+                        </Grid>
+                    </ScrollViewer>
+                </Expander>
 
                 <TextBlock
                     x:Name="MapFilterSummaryTextBlock"
@@ -232,7 +268,7 @@
         </Border>
 
         <Border
-            Grid.Row="1"
+            Grid.Row="2"
             Padding="8"
             Style="{StaticResource ShellGlassCardStyle}">
             <Border
@@ -241,5 +277,6 @@
                 <WebView2 x:Name="MapWebView" />
             </Border>
         </Border>
-    </Grid>
+        </Grid>
+    </ScrollViewer>
 </Page>

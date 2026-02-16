@@ -230,7 +230,7 @@
 
                             <TextBox
                                 x:Name="TitleTextBox"
-                                Header="Tittle"
+                                Header="Title"
                                 PlaceholderText="Masukkan judul TT"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />
@@ -285,6 +285,41 @@
                                     Width="190" />
                             </Grid>
 
+                            <Grid x:Name="FinishTimePanel" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Finish Time :" />
+                                <TextBox
+                                    x:Name="FinishTimeTextBox"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    LostFocus="DateTimeTextBox_LostFocus"
+                                    PlaceholderText="dd-MM-yyyy HH:mm"
+                                    Style="{StaticResource ShellInputTextBoxStyle}"
+                                    TextAlignment="Center"
+                                    TextChanged="InputChanged"
+                                    Width="190" />
+                            </Grid>
+
+                            <Grid x:Name="MttrPanel" ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="MTTR :" />
+                                <TextBox
+                                    x:Name="MttrTextBox"
+                                    Grid.Column="1"
+                                    HorizontalAlignment="Left"
+                                    IsReadOnly="True"
+                                    PlaceholderText="-"
+                                    Style="{StaticResource ShellInputTextBoxStyle}"
+                                    TextAlignment="Center"
+                                    Width="190" />
+                            </Grid>
+
                             <AutoSuggestBox
                                 x:Name="PicAutoSuggestBox"
                                 Header="PIC"
@@ -298,7 +333,7 @@
 
                             <TextBox
                                 x:Name="RootCauseTextBox"
-                                Header="Rootcause"
+                                Header="Root Cause"
                                 PlaceholderText="Contoh: Still Investigation"
                                 Style="{StaticResource ShellInputTextBoxStyle}"
                                 TextChanged="InputChanged" />

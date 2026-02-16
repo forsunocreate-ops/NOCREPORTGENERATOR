@@ -19,6 +19,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using Windows.ApplicationModel.DataTransfer;
+using Microsoft.UI.Xaml.Navigation;
 
 namespace NOCREPORTGENERATOR.Pages
 {
@@ -34,11 +35,16 @@ namespace NOCREPORTGENERATOR.Pages
         private ISeries[] _dailyTrendSeries = Array.Empty<ISeries>();
         private Axis[] _dailyTrendXAxes = Array.Empty<Axis>();
         private Axis[] _dailyTrendYAxes = Array.Empty<Axis>();
-        private ISeries[] _severitySeries = Array.Empty<ISeries>();
+        private ISeries[] _linkStatusSeries = Array.Empty<ISeries>();
+        private bool _isDashboardInitialized;
+        private bool _isStorageChangeSubscribed;
+        private bool _isRefreshingDashboard;
+        private bool _hasPendingDashboardRefresh;
 
         public DashboardPage()
         {
             InitializeComponent();
+            NavigationCacheMode = NavigationCacheMode.Required;
             DataContext = this;
             Loaded += DashboardPage_Loaded;
             InitializeChartDefaults();
@@ -76,21 +82,29 @@ namespace NOCREPORTGENERATOR.Pages
             }
         }
 
-        public ISeries[] SeveritySeries
+        public ISeries[] LinkStatusSeries
         {
-            get => _severitySeries;
+            get => _linkStatusSeries;
             private set
             {
-                _severitySeries = value;
+                _linkStatusSeries = value;
                 OnPropertyChanged();
             }
         }
 
         private async void DashboardPage_Loaded(object sender, RoutedEventArgs e)
         {
+            SubscribeToStorageChange();
+
+            if (_isDashboardInitialized)
+            {
+                return;
+            }
+
             TryInitializeWin2DHeroVisual();
             InitializeFilters();
             await RefreshDashboardAsync();
+            _isDashboardInitialized = true;
         }
 
         private void InitializeChartDefaults()
@@ -136,18 +150,34 @@ namespace NOCREPORTGENERATOR.Pages
 
         private async System.Threading.Tasks.Task RefreshDashboardAsync()
         {
+            if (_isRefreshingDashboard)
+            {
+                _hasPendingDashboardRefresh = true;
+                return;
+            }
+
+            _isRefreshingDashboard = true;
             try
             {
-                var records = await LocalFormStorageService.GetAllAsync();
-                _allRecords.Clear();
-                _allRecords.AddRange(records);
+                do
+                {
+                    _hasPendingDashboardRefresh = false;
+                    var records = await LocalFormStorageService.GetAllAsync();
+                    _allRecords.Clear();
+                    _allRecords.AddRange(records);
 
-                UpdateHeadlineStats();
-                ApplyFilters();
+                    UpdateHeadlineStats();
+                    ApplyFilters();
+                }
+                while (_hasPendingDashboardRefresh);
             }
             catch (Exception ex)
             {
                 DeveloperDiagnostics.LogError("DashboardPage.RefreshDashboardAsync", ex);
+            }
+            finally
+            {
+                _isRefreshingDashboard = false;
             }
         }
 
@@ -157,8 +187,8 @@ namespace NOCREPORTGENERATOR.Pages
             var totalToday = _allRecords.Count(x => x.OccurDateTime.LocalDateTime.Date == today);
             var openCriticalMajor = _allRecords.Count(x =>
             {
-                var (status, severity) = ParseStatusSeverity(x.Title);
-                return status.Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                var (_, severity) = ParseStatusSeverity(x.Title);
+                return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
                        (severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ||
                         severity.Equals("major", StringComparison.OrdinalIgnoreCase));
             });
@@ -223,8 +253,8 @@ namespace NOCREPORTGENERATOR.Pages
 
             var openCritical = records.Count(x =>
             {
-                var (status, severity) = ParseStatusSeverity(x.Title);
-                return status.Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                var (_, severity) = ParseStatusSeverity(x.Title);
+                return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
                        severity.Equals("critical", StringComparison.OrdinalIgnoreCase);
             });
 
@@ -281,58 +311,53 @@ namespace NOCREPORTGENERATOR.Pages
                 }
             };
 
-            var openCritical = 0;
-            var openMajor = 0;
-            var other = 0;
+            var open = 0;
+            var closed = 0;
+            var cancel = 0;
 
             foreach (var record in records)
             {
-                var (status, severity) = ParseStatusSeverity(record.Title);
-                if (!status.Equals("open", StringComparison.OrdinalIgnoreCase))
-                {
-                    other++;
-                    continue;
-                }
+                var normalizedStatus = GetRecordStatus(record);
 
-                if (severity.Equals("critical", StringComparison.OrdinalIgnoreCase))
+                if (normalizedStatus.Equals("open", StringComparison.OrdinalIgnoreCase))
                 {
-                    openCritical++;
+                    open++;
                 }
-                else if (severity.Equals("major", StringComparison.OrdinalIgnoreCase))
+                else if (normalizedStatus.Equals("closed", StringComparison.OrdinalIgnoreCase))
                 {
-                    openMajor++;
+                    closed++;
                 }
-                else
+                else if (normalizedStatus.Equals("cancel", StringComparison.OrdinalIgnoreCase))
                 {
-                    other++;
+                    cancel++;
                 }
             }
 
-            SeveritySeries = new ISeries[]
+            LinkStatusSeries = new ISeries[]
             {
                 new PieSeries<int>
                 {
-                    Values = new[] { openCritical },
-                    Name = "Open Critical",
-                    Fill = new SolidColorPaint(new SKColor(226, 56, 88)),
+                    Values = new[] { open },
+                    Name = "Open",
+                    Fill = new SolidColorPaint(new SKColor(236, 99, 118)),
                     DataLabelsSize = 12,
                     DataLabelsPosition = PolarLabelsPosition.Middle,
                     DataLabelsFormatter = point => point.Coordinate.PrimaryValue.ToString(CultureInfo.InvariantCulture)
                 },
                 new PieSeries<int>
                 {
-                    Values = new[] { openMajor },
-                    Name = "Open Major",
-                    Fill = new SolidColorPaint(new SKColor(255, 156, 70)),
+                    Values = new[] { closed },
+                    Name = "Closed",
+                    Fill = new SolidColorPaint(new SKColor(79, 176, 112)),
                     DataLabelsSize = 12,
                     DataLabelsPosition = PolarLabelsPosition.Middle,
                     DataLabelsFormatter = point => point.Coordinate.PrimaryValue.ToString(CultureInfo.InvariantCulture)
                 },
                 new PieSeries<int>
                 {
-                    Values = new[] { other },
-                    Name = "Other",
-                    Fill = new SolidColorPaint(new SKColor(128, 144, 160)),
+                    Values = new[] { cancel },
+                    Name = "Cancel",
+                    Fill = new SolidColorPaint(new SKColor(255, 179, 71)),
                     DataLabelsSize = 12,
                     DataLabelsPosition = PolarLabelsPosition.Middle,
                     DataLabelsFormatter = point => point.Coordinate.PrimaryValue.ToString(CultureInfo.InvariantCulture)
@@ -346,21 +371,21 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 "Open (Critical/Major)" => data.Where(x =>
                 {
-                    var (status, severity) = ParseStatusSeverity(x.Title);
-                    return status.Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                    var (_, severity) = ParseStatusSeverity(x.Title);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
                            (severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ||
                             severity.Equals("major", StringComparison.OrdinalIgnoreCase));
                 }),
                 "Open Critical" => data.Where(x =>
                 {
-                    var (status, severity) = ParseStatusSeverity(x.Title);
-                    return status.Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                    var (_, severity) = ParseStatusSeverity(x.Title);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
                            severity.Equals("critical", StringComparison.OrdinalIgnoreCase);
                 }),
                 "Open Major" => data.Where(x =>
                 {
-                    var (status, severity) = ParseStatusSeverity(x.Title);
-                    return status.Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                    var (_, severity) = ParseStatusSeverity(x.Title);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
                            severity.Equals("major", StringComparison.OrdinalIgnoreCase);
                 }),
                 _ => data
@@ -390,8 +415,9 @@ namespace NOCREPORTGENERATOR.Pages
 
         private static DashboardHistoryItem ToHistoryItem(LocalFormRecord record)
         {
-            var (status, severity) = ParseStatusSeverity(record.Title);
-            var normalizedStatus = string.IsNullOrWhiteSpace(status) ? "-" : status;
+            var normalizedStatus = GetRecordStatus(record);
+            var (_, severity) = ParseStatusSeverity(record.Title);
+            var statusText = string.IsNullOrWhiteSpace(normalizedStatus) ? "-" : normalizedStatus;
             var normalizedSeverity = string.IsNullOrWhiteSpace(severity) ? "-" : severity;
             var inc = GetIncNumber(record.Title);
 
@@ -399,7 +425,7 @@ namespace NOCREPORTGENERATOR.Pages
                 record,
                 string.IsNullOrWhiteSpace(record.Name) ? (string.IsNullOrWhiteSpace(inc) ? "Draft" : inc) : record.Name,
                 record.Title,
-                $"{record.SavedAt:dd-MM-yyyy HH:mm} | {normalizedStatus} - {normalizedSeverity}");
+                $"{record.SavedAt:dd-MM-yyyy HH:mm} | {statusText} - {normalizedSeverity}");
         }
 
         private static (string Status, string Severity) ParseStatusSeverity(string title)
@@ -418,6 +444,39 @@ namespace NOCREPORTGENERATOR.Pages
             return (
                 match.Groups["status"].Value.Trim(),
                 match.Groups["severity"].Value.Trim());
+        }
+
+        private static string NormalizeLinkStatus(string status)
+        {
+            if (string.IsNullOrWhiteSpace(status))
+            {
+                return string.Empty;
+            }
+
+            var normalized = status.Trim().ToLowerInvariant();
+            if (normalized is "close" or "closed")
+            {
+                return "closed";
+            }
+
+            if (normalized is "cancel" or "cancelled" or "canceled")
+            {
+                return "cancel";
+            }
+
+            return normalized;
+        }
+
+        private static string GetRecordStatus(LocalFormRecord record)
+        {
+            var fromStatusLink = NormalizeLinkStatus(record.StatusLink);
+            if (!string.IsNullOrWhiteSpace(fromStatusLink))
+            {
+                return fromStatusLink;
+            }
+
+            var (statusFromTitle, _) = ParseStatusSeverity(record.Title);
+            return NormalizeLinkStatus(statusFromTitle);
         }
 
         private static string GetIncNumber(string title)
@@ -587,6 +646,30 @@ namespace NOCREPORTGENERATOR.Pages
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        private void SubscribeToStorageChange()
+        {
+            if (_isStorageChangeSubscribed)
+            {
+                return;
+            }
+
+            LocalFormStorageService.RecordsChanged += LocalFormStorageService_RecordsChanged;
+            _isStorageChangeSubscribed = true;
+        }
+
+        private void LocalFormStorageService_RecordsChanged()
+        {
+            if (DispatcherQueue is null)
+            {
+                return;
+            }
+
+            _ = DispatcherQueue.TryEnqueue(async () =>
+            {
+                await RefreshDashboardAsync();
+            });
         }
 
         private sealed class DashboardHistoryItem

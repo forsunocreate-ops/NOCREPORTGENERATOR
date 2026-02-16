@@ -6,32 +6,60 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
+    <Page.Transitions>
+        <TransitionCollection>
+            <NavigationThemeTransition />
+            <EntranceThemeTransition FromVerticalOffset="16" />
+        </TransitionCollection>
+    </Page.Transitions>
 
     <ScrollViewer>
-        <Grid Padding="16">
-            <Border Style="{StaticResource ShellGlassCardStyle}">
+        <Grid Padding="16" RowSpacing="12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
+                <StackPanel Spacing="4">
+                    <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Configuration" />
+                    <TextBlock
+                        Style="{StaticResource ShellHeroTitleTextStyle}"
+                        Text="AI Settings" />
+                    <TextBlock
+                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                        Text="Kelola API key Gemini untuk fitur parsing coordinate dan translasi progress." />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
                 <StackPanel Spacing="12">
-                    <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="AI Settings" />
-                    <TextBlock
-                        Foreground="{StaticResource ShellMutedForegroundBrush}"
-                        Text="Masukkan API Key Gemini untuk parsing watermark koordinat dari foto." />
-                    <TextBox
-                        x:Name="GeminiApiKeyTextBox"
-                        Header="Gemini API Key (2.5-flash)"
-                        PlaceholderText="AIza..."
-                        Style="{StaticResource ShellInputTextBoxStyle}" />
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <Button Click="SaveButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
-                            <TextBlock Text="Save" />
-                        </Button>
-                        <Button Click="ClearButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
-                            <TextBlock Text="Clear" />
-                        </Button>
-                    </StackPanel>
-                    <TextBlock
-                        x:Name="StatusTextBlock"
-                        Foreground="{StaticResource ShellMutedForegroundBrush}"
-                        Text="-" />
+                    <Border Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Gemini API" />
+                            <TextBlock
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Simpan API key secara lokal untuk dipakai fitur AI di aplikasi ini." />
+                            <PasswordBox
+                                x:Name="GeminiApiKeyPasswordBox"
+                                Header="Gemini API Key (2.5-flash)"
+                                PlaceholderText="AIza..."
+                                PasswordRevealMode="Peek"
+                                Style="{StaticResource ShellInputPasswordBoxStyle}" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button Click="SaveButton_Click" Style="{StaticResource ShellPrimaryButtonStyle}">
+                                    <TextBlock Text="Save" />
+                                </Button>
+                                <Button Click="ClearButton_Click" Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <TextBlock Text="Clear" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock
+                                x:Name="StatusTextBlock"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="-" />
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
             </Border>
         </Grid>

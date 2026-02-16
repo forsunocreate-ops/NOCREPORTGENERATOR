@@ -55,6 +55,9 @@ namespace NOCREPORTGENERATOR.Pages
                 TitleTextBlock.Text = Normalize(record.Title);
                 OccurTimeTextBlock.Text = FormatDate(record.OccurDateTime);
                 DispatchTimeTextBlock.Text = FormatDate(record.DispatchDateTime);
+                var finish = record.FinishDateTime == default ? record.DispatchDateTime : record.FinishDateTime;
+                FinishTimeTextBlock.Text = FormatDate(finish);
+                MttrTextBlock.Text = FormatMttr(record.DispatchDateTime, finish);
                 PicTextBlock.Text = Normalize(record.Pic);
                 StatusLinkTextBlock.Text = Normalize(record.StatusLink);
                 SegmentRouteTextBlock.Text = Normalize(record.SegmentRoute);
@@ -133,6 +136,26 @@ namespace NOCREPORTGENERATOR.Pages
             return value == default
                 ? "-"
                 : value.ToString("dd-MM-yyyy HH:mm", CultureInfo.InvariantCulture);
+        }
+
+        private static string FormatMttr(DateTimeOffset dispatch, DateTimeOffset finish)
+        {
+            if (dispatch == default || finish == default || finish < dispatch)
+            {
+                return "-";
+            }
+
+            var duration = finish - dispatch;
+            var days = (int)duration.TotalDays;
+            var hours = duration.Hours;
+            var minutes = duration.Minutes;
+
+            return days > 0
+                ? days.ToString(CultureInfo.InvariantCulture) + "d " +
+                  hours.ToString(CultureInfo.InvariantCulture) + "h " +
+                  minutes.ToString(CultureInfo.InvariantCulture) + "m"
+                : ((int)duration.TotalHours).ToString(CultureInfo.InvariantCulture) + "h " +
+                  minutes.ToString(CultureInfo.InvariantCulture) + "m";
         }
     }
 }

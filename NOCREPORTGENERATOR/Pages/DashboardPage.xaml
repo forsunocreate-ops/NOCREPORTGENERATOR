@@ -15,8 +15,8 @@
         </TransitionCollection>
     </Page.Transitions>
 
-    <ScrollViewer>
-        <Grid x:Name="DashboardRootGrid" Padding="16" RowSpacing="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Grid x:Name="DashboardRootGrid" Padding="16" RowSpacing="14">
             <Grid.ChildrenTransitions>
                 <TransitionCollection>
                     <EntranceThemeTransition FromVerticalOffset="16" IsStaggeringEnabled="True" />
@@ -31,7 +31,7 @@
                             <AdaptiveTrigger MinWindowWidth="1200" />
                         </VisualState.StateTriggers>
                         <VisualState.Setters>
-                            <Setter Target="DashboardRootGrid.Padding" Value="16" />
+                            <Setter Target="DashboardRootGrid.Padding" Value="18" />
                             <Setter Target="ChartCol1.Width" Value="2*" />
                             <Setter Target="ChartCol2.Width" Value="*" />
                             <Setter Target="DetailCol1.Width" Value="2*" />
@@ -43,7 +43,7 @@
                             <AdaptiveTrigger MinWindowWidth="0" />
                         </VisualState.StateTriggers>
                         <VisualState.Setters>
-                            <Setter Target="DashboardRootGrid.Padding" Value="10" />
+                            <Setter Target="DashboardRootGrid.Padding" Value="12" />
                             <Setter Target="ChartCol1.Width" Value="*" />
                             <Setter Target="ChartCol2.Width" Value="0" />
                             <Setter Target="DetailCol1.Width" Value="*" />
@@ -63,11 +63,7 @@
 
             <Border
                 Grid.Row="0"
-                Padding="16"
-                Background="{StaticResource ShellHeroGradientBrush}"
-                BorderBrush="{StaticResource ShellGlassStrongBorderBrush}"
-                BorderThickness="1"
-                CornerRadius="16">
+                Style="{StaticResource ShellPageHeaderCardStyle}">
                 <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -77,9 +73,7 @@
                     <StackPanel Spacing="4">
                         <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="KPI Board" />
                         <TextBlock
-                            FontSize="30"
-                            FontWeight="SemiBold"
-                            Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
+                            Style="{StaticResource ShellHeroTitleTextStyle}"
                             Text="TT Performance Dashboard" />
                         <TextBlock
                             Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
@@ -208,22 +202,23 @@
 
                 <Border Grid.Column="1" Style="{StaticResource ShellGlassCardStyle}">
                     <StackPanel Spacing="10">
-                        <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Komposisi Severity" />
+                        <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Komposisi Status Link" />
                         <TextBlock
                             Style="{StaticResource ShellSectionCaptionStyle}"
-                            Text="Proporsi ticket Open per level severity." />
+                            Text="Distribusi status ticket: Open, Closed, dan Cancel." />
                         <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
                             <lvc:PieChart
                                 Height="260"
-                                LegendPosition="Right"
-                                Series="{Binding SeveritySeries}" />
+                                LegendPosition="Bottom"
+                                Series="{Binding LinkStatusSeries}" />
                         </Border>
                     </StackPanel>
                 </Border>
             </Grid>
 
             <Border Grid.Row="3" Style="{StaticResource ShellGlassCardStyle}">
-                <Grid ColumnSpacing="10" RowSpacing="10">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <Grid ColumnSpacing="10" RowSpacing="10" MinWidth="920">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="Auto" />
@@ -233,11 +228,21 @@
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Column="0"
+                        Grid.ColumnSpan="5"
+                        Margin="2,0,0,2"
+                        Foreground="{StaticResource ShellMutedForegroundBrush}"
+                        Style="{StaticResource ShellSectionCaptionStyle}"
+                        Text="Search &amp; Filter" />
 
                     <TextBox
                         x:Name="SearchTextBox"
                         Grid.Column="0"
+                        Grid.Row="1"
                         PlaceholderText="Search title, INC, segment route, system key, PIC..."
                         Style="{StaticResource ShellInputTextBoxStyle}"
                         TextChanged="SearchTextBox_TextChanged" />
@@ -245,6 +250,7 @@
                     <ComboBox
                         x:Name="StatusFilterComboBox"
                         Grid.Column="1"
+                        Grid.Row="1"
                         MinWidth="180"
                         Style="{StaticResource ShellInputComboBoxStyle}"
                         SelectionChanged="StatusFilterComboBox_SelectionChanged" />
@@ -252,6 +258,7 @@
                     <ComboBox
                         x:Name="DateFilterComboBox"
                         Grid.Column="2"
+                        Grid.Row="1"
                         MinWidth="170"
                         Style="{StaticResource ShellInputComboBoxStyle}"
                         SelectionChanged="DateFilterComboBox_SelectionChanged" />
@@ -259,6 +266,7 @@
                     <Button
                         x:Name="RefreshButton"
                         Grid.Column="3"
+                        Grid.Row="1"
                         Click="RefreshButton_Click"
                         Style="{StaticResource ShellSecondaryButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
@@ -270,6 +278,7 @@
                     <Button
                         x:Name="OpenInCreateTtButton"
                         Grid.Column="4"
+                        Grid.Row="1"
                         Click="OpenInCreateTtButton_Click"
                         IsEnabled="False"
                         Style="{StaticResource ShellPrimaryButtonStyle}">
@@ -278,7 +287,8 @@
                             <TextBlock Text="Open in Create TT" />
                         </StackPanel>
                     </Button>
-                </Grid>
+                    </Grid>
+                </ScrollViewer>
             </Border>
 
             <Grid Grid.Row="4" ColumnSpacing="12">
