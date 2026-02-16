@@ -18,7 +18,7 @@ namespace NOCREPORTGENERATOR.Services
         private const int EmptyStreakStopThreshold = 2500;
         private static readonly Regex TtIohRegex = new(@"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex ProgressDateRegex = new(
-            @"(?<dt>\b\d{1,2}[-/]\d{1,2}[-/]\d{2,4}\s+\d{1,2}:\d{2}(?::\d{2})?\b)",
+            @"(?<dt>\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{1,2}:\d{2}(?::\d{2})?\b)",
             RegexOptions.Compiled);
         private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
@@ -494,12 +494,11 @@ namespace NOCREPORTGENERATOR.Services
                 return string.Empty;
             }
 
-            var normalizedNewLine = raw
+            var normalized = raw
                 .Replace("\r\n", "\n", StringComparison.Ordinal)
                 .Replace('\r', '\n');
 
-            var lines = normalizedNewLine
-                .Split('\n')
+            var lines = ExtractProgressLines(normalized)
                 .Select(CleanProgressLine)
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -523,6 +522,56 @@ namespace NOCREPORTGENERATOR.Services
             }
 
             return string.Join(Environment.NewLine, withParsedDate.Select(x => x.Text));
+        }
+
+        private static IEnumerable<string> ExtractProgressLines(string text)
+        {
+            var matches = ProgressDateRegex.Matches(text);
+            if (matches.Count == 0)
+            {
+                return text
+                    .Split('\n')
+                    .Select(x => x.Trim())
+                    .Where(x => !string.IsNullOrWhiteSpace(x));
+            }
+
+            var result = new List<string>(matches.Count);
+            for (var i = 0; i < matches.Count; i++)
+            {
+                var current = matches[i];
+                var start = current.Index;
+                var end = i + 1 < matches.Count ? matches[i + 1].Index : text.Length;
+                if (end <= start)
+                {
+                    continue;
+                }
+
+                var block = text.Substring(start, end - start).Trim();
+                if (string.IsNullOrWhiteSpace(block))
+                {
+                    continue;
+                }
+
+                var timestamp = current.Groups["dt"].Value.Trim();
+                if (!block.StartsWith(timestamp, StringComparison.Ordinal))
+                {
+                    result.Add(block);
+                    continue;
+                }
+
+                var tail = block.Substring(timestamp.Length).TrimStart();
+                if (tail.Length > 0)
+                {
+                    tail = tail.TrimStart(':', '-', '|', ';').TrimStart();
+                    result.Add(timestamp + " " + tail);
+                }
+                else
+                {
+                    result.Add(timestamp);
+                }
+            }
+
+            return result;
         }
 
         private static string CleanProgressLine(string line)

@@ -118,7 +118,7 @@
                     VerticalScrollBarVisibility="Disabled">
                     <Grid
                         ColumnSpacing="8"
-                        MinWidth="980">
+                        MinWidth="1320">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="170" />
@@ -126,6 +126,9 @@
                         <ColumnDefinition Width="170" />
                         <ColumnDefinition Width="150" />
                         <ColumnDefinition Width="150" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
@@ -181,9 +184,43 @@
                             Toggled="HeatmapToggleSwitch_Toggled" />
                     </StackPanel>
 
+                    <StackPanel
+                        Grid.Column="7"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center">
+                        <TextBlock VerticalAlignment="Center" Text="Site Marker" />
+                        <ToggleSwitch
+                            x:Name="SiteMarkersToggleSwitch"
+                            Toggled="SiteMarkersToggleSwitch_Toggled" />
+                    </StackPanel>
+
+                    <StackPanel
+                        Grid.Column="8"
+                        Orientation="Horizontal"
+                        Spacing="8"
+                        VerticalAlignment="Center">
+                        <TextBlock VerticalAlignment="Center" Text="Site Line" />
+                        <ToggleSwitch
+                            x:Name="SiteLinesToggleSwitch"
+                            Toggled="SiteLinesToggleSwitch_Toggled" />
+                    </StackPanel>
+
+                    <Button
+                        x:Name="ImportSegmentPmButton"
+                        Grid.Column="9"
+                        Click="ImportSegmentPmButton_Click"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
+                            <TextBlock Text="Import SegmentPM" />
+                        </StackPanel>
+                    </Button>
+
                     <Button
                         x:Name="ExportCsvButton"
-                        Grid.Column="7"
+                        Grid.Column="10"
                         Click="ExportCsvButton_Click"
                         VerticalAlignment="Center"
                         Style="{StaticResource ShellSecondaryButtonStyle}">

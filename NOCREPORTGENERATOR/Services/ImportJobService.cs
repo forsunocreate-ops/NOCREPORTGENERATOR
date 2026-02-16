@@ -9,6 +9,17 @@ namespace NOCREPORTGENERATOR.Services
         private static CancellationTokenSource? _cts;
         private static ImportJobState _state = ImportJobState.Inactive;
 
+        public static ImportJobState CurrentState
+        {
+            get
+            {
+                lock (Sync)
+                {
+                    return _state;
+                }
+            }
+        }
+
         public static event Action<ImportJobState>? StateChanged;
 
         public static CancellationToken Start(string message)

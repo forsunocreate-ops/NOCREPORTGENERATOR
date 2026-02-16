@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml;
+﻿using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using NOCREPORTGENERATOR.Services;
 using System;
@@ -36,6 +36,7 @@ namespace NOCREPORTGENERATOR.Pages
         private string _payloadJson = "{\"markers\":[],\"heatmap\":false}";
         private List<MapPoint> _all = new();
         private List<MapPoint> _last = new();
+        private List<SegmentPmMapService.SegmentSiteLinkPoint> _siteLinks = new();
 
         public LiveMapPage()
         {
@@ -58,6 +59,7 @@ namespace NOCREPORTGENERATOR.Pages
                 await EnsureWebViewReadyAsync();
                 var records = await LocalFormStorageService.GetCoordinateRecordsAsync();
                 _all = records.Select(ToPoint).Where(x => x is not null).Cast<MapPoint>().ToList();
+                await LoadSiteLinksAsync();
                 await ApplySmartFilterAsync();
             }
             catch (Exception ex)
@@ -163,6 +165,8 @@ namespace NOCREPORTGENERATOR.Pages
             SeverityFilterComboBox.ItemsSource = new[] { AllSeverityOption, "Critical", "Major", "Minor", "Unknown" };
             SeverityFilterComboBox.SelectedIndex = 0;
             HeatmapToggleSwitch.IsOn = false;
+            SiteMarkersToggleSwitch.IsOn = true;
+            SiteLinesToggleSwitch.IsOn = true;
             _filterReady = true;
         }
 
@@ -184,12 +188,71 @@ namespace NOCREPORTGENERATOR.Pages
             _segmentReady = true;
         }
 
+        private async Task LoadSiteLinksAsync()
+        {
+            try
+            {
+                _siteLinks = (await SegmentPmMapService.GetLinksAsync()).ToList();
+                MergeSegmentRouteOptionsFromSites(_siteLinks);
+            }
+            catch (Exception ex)
+            {
+                _siteLinks = new List<SegmentPmMapService.SegmentSiteLinkPoint>();
+                DeveloperDiagnostics.LogError("LiveMapPage.LoadSiteLinksAsync", ex);
+            }
+        }
+
+        private void MergeSegmentRouteOptionsFromSites(IReadOnlyList<SegmentPmMapService.SegmentSiteLinkPoint> links)
+        {
+            try
+            {
+                var current = (SegmentRouteFilterComboBox.ItemsSource as IEnumerable<string>) ?? new[] { AllSegmentOption };
+                var merged = current
+                    .Concat(links.Select(x => x.RouteSegment))
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)                    .ToList();
+
+                if (!merged.Contains(AllSegmentOption, StringComparer.OrdinalIgnoreCase))
+                {
+                    merged.Insert(0, AllSegmentOption);
+                }
+                else
+                {
+                    merged = merged
+                        .Where(x => !string.Equals(x, AllSegmentOption, StringComparison.OrdinalIgnoreCase))
+                        .Prepend(AllSegmentOption)                        .ToList();
+                }
+
+                var selected = SegmentRouteFilterComboBox.SelectedItem as string;
+                SegmentRouteFilterComboBox.ItemsSource = merged;
+                SegmentRouteFilterComboBox.SelectedItem = merged.FirstOrDefault(x =>
+                    string.Equals(x, selected, StringComparison.OrdinalIgnoreCase)) ?? AllSegmentOption;
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("LiveMapPage.MergeSegmentRouteOptionsFromSites", ex);
+            }
+        }
+
         private async Task ApplySmartFilterAsync()
         {
-            var filtered = FilterPoints(_all, SmartFilterAutoSuggestBox.Text, QuickFilterComboBox.SelectedItem as string, GetSegment(), FromDatePicker.Date, ToDatePicker.Date, GetStatus(), GetSeverity());
+            var query = SmartFilterAutoSuggestBox.Text;
+            var segment = GetSegment();
+            var filtered = FilterPoints(_all, query, QuickFilterComboBox.SelectedItem as string, segment, FromDatePicker.Date, ToDatePicker.Date, GetStatus(), GetSeverity());
+            var filteredSiteLinks = FilterSiteLinks(_siteLinks, query, segment);
             _last = filtered;
-            _payloadJson = JsonSerializer.Serialize(new MapPayload { Markers = filtered, Heatmap = HeatmapToggleSwitch.IsOn }, JsonOptions);
-            MapFilterSummaryTextBlock.Text = $"{filtered.Count} marker tampil dari {_all.Count} data koordinat";
+            _payloadJson = JsonSerializer.Serialize(new MapPayload
+            {
+                Markers = filtered,
+                Heatmap = HeatmapToggleSwitch.IsOn,
+                SiteLinks = filteredSiteLinks,
+                ShowSiteMarkers = SiteMarkersToggleSwitch.IsOn,
+                ShowSiteLines = SiteLinesToggleSwitch.IsOn
+            }, JsonOptions);
+            MapFilterSummaryTextBlock.Text =
+                $"{filtered.Count} marker TT, {filteredSiteLinks.Count} line site tampil | " +
+                $"Data: {_all.Count} marker TT, {_siteLinks.Count} line site";
             await EnsureWebViewReadyAsync();
             if (!_mapLoaded) MapWebView.NavigateToString(BuildMapHtml()); else await PushToMapAsync();
         }
@@ -197,6 +260,56 @@ namespace NOCREPORTGENERATOR.Pages
         private string? GetSegment() => SegmentRouteFilterComboBox.SelectedItem as string ?? SegmentRouteFilterComboBox.Text;
         private string? GetStatus() => StatusFilterComboBox.SelectedItem as string is string s && !s.Equals(AllStatusOption, StringComparison.OrdinalIgnoreCase) ? s : null;
         private string? GetSeverity() => SeverityFilterComboBox.SelectedItem as string is string s && !s.Equals(AllSeverityOption, StringComparison.OrdinalIgnoreCase) ? s : null;
+
+        private static List<SegmentPmMapService.SegmentSiteLinkPoint> FilterSiteLinks(
+            IReadOnlyList<SegmentPmMapService.SegmentSiteLinkPoint> src,
+            string? query,
+            string? segment)
+        {
+            IEnumerable<SegmentPmMapService.SegmentSiteLinkPoint> q = src;
+            if (!string.IsNullOrWhiteSpace(segment) && !segment.Equals(AllSegmentOption, StringComparison.OrdinalIgnoreCase))
+            {
+                q = q.Where(x => Contains(x.RouteSegment, segment));
+            }
+
+            var text = (query ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                var terms = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var t in terms)
+                {
+                    var i = t.IndexOf(':');
+                    if (i <= 0 || i == t.Length - 1)
+                    {
+                        q = q.Where(x =>
+                            Contains(x.RouteSegment, t) ||
+                            Contains(x.UniqueId, t) ||
+                            Contains(x.SiteAId, t) ||
+                            Contains(x.SiteBId, t) ||
+                            Contains(x.SiteAName, t) ||
+                            Contains(x.SiteBName, t));
+                        continue;
+                    }
+
+                    var k = t[..i].Trim().ToLowerInvariant();
+                    var v = t[(i + 1)..].Trim();
+                    if (string.IsNullOrWhiteSpace(v))
+                    {
+                        continue;
+                    }
+
+                    q = k switch
+                    {
+                        "seg" => q.Where(x => Contains(x.RouteSegment, v)),
+                        "site" => q.Where(x => Contains(x.SiteAId, v) || Contains(x.SiteBId, v) || Contains(x.SiteAName, v) || Contains(x.SiteBName, v)),
+                        "uid" => q.Where(x => Contains(x.UniqueId, v)),
+                        _ => q.Where(x => Contains(x.RouteSegment, v) || Contains(x.SiteAId, v) || Contains(x.SiteBId, v))
+                    };
+                }
+            }
+
+            return q.ToList();
+        }
 
         private static List<MapPoint> FilterPoints(IReadOnlyList<MapPoint> src, string? query, string? quick, string? segment, DateTimeOffset? from, DateTimeOffset? to, string? status, string? severity)
         {
@@ -362,6 +475,9 @@ namespace NOCREPORTGENERATOR.Pages
     .tt-btn{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:8px;border:1px solid #1e5fa8;background:#1f6fca;color:#ffffff !important;-webkit-text-fill-color:#ffffff;text-decoration:none;font-size:12px;font-weight:700;cursor:pointer;line-height:1}
     .tt-btn:visited,.tt-btn:hover,.tt-btn:active{color:#ffffff !important;-webkit-text-fill-color:#ffffff;text-decoration:none}
     .tt-btn:hover{filter:brightness(0.96)}
+    .site-marker{background:transparent;border:0}
+    .site-dot{width:12px;height:12px;border-radius:50%;background:#12b886;border:2px solid #ffffff;box-shadow:0 0 0 1px rgba(18,184,134,.55),0 1px 6px rgba(0,0,0,.28)}
+    .site-line-a{color:#15aabf}
   </style>
 </head>
 <body>
@@ -374,6 +490,8 @@ namespace NOCREPORTGENERATOR.Pages
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     const cluster=L.markerClusterGroup({chunkedLoading:true,chunkDelay:35,chunkInterval:120,showCoverageOnHover:false,spiderfyOnMaxZoom:true});
     map.addLayer(cluster);
+    const siteMarkerLayer=L.layerGroup().addTo(map);
+    const siteLineLayer=L.layerGroup().addTo(map);
     let heat=null;
 
     const esc = v => String(v ?? '-').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] || m));
@@ -424,22 +542,60 @@ namespace NOCREPORTGENERATOR.Pages
       const html=`<div class="marker3d-wrap ${cls}"><div class="marker3d-shadow"></div><div class="marker3d-stem"></div><div class="marker3d-glow"></div><div class="marker3d-pulse"></div><div class="marker3d-core"></div></div>`;
       return L.divIcon({className:'map-marker-3d',html,iconSize:[26,34],iconAnchor:[13,30],popupAnchor:[0,-22]});
     }
-    function render(data,on){
+    function siteIcon(){
+      return L.divIcon({className:'site-marker',html:'<div class=\"site-dot\"></div>',iconSize:[12,12],iconAnchor:[6,6],popupAnchor:[0,-6]});
+    }
+    function render(data,on,links,showSiteMarkers,showSiteLines){
       cluster.clearLayers();
+      siteMarkerLayer.clearLayers();
+      siteLineLayer.clearLayers();
       if(heat){map.removeLayer(heat);heat=null;}
       const hp=[];
+      const bounds=[];
       for(const i of data){
         if(typeof i.latitude!=='number'||typeof i.longitude!=='number') continue;
         const m=L.marker([i.latitude,i.longitude],{icon:create3DIcon(i),riseOnHover:true});
         m.bindPopup(popupHtml(i),{maxWidth:340});
         cluster.addLayer(m);
+        bounds.push([i.latitude,i.longitude]);
         const severity=String(i.severity||'').toLowerCase();
         const weight=severity.includes('critical') ? 1 : severity.includes('major') ? 0.82 : severity.includes('minor') ? 0.68 : 0.6;
         hp.push([i.latitude,i.longitude,weight]);
       }
+      const markerDedup=new Set();
+      if(Array.isArray(links)){
+        for(const l of links){
+          const aOk=Number.isFinite(Number(l.latitudeA))&&Number.isFinite(Number(l.longitudeA));
+          const bOk=Number.isFinite(Number(l.latitudeB))&&Number.isFinite(Number(l.longitudeB));
+          if(!aOk||!bOk) continue;
+          const aLat=Number(l.latitudeA), aLon=Number(l.longitudeA), bLat=Number(l.latitudeB), bLon=Number(l.longitudeB);
+          if(showSiteLines){
+            const line=L.polyline([[aLat,aLon],[bLat,bLon]],{color:'#15aabf',weight:2,opacity:.86});
+            line.bindPopup(`<div><b>${esc(l.routeSegment||'-')}</b><br/>${esc(l.siteAId||l.siteAName||'-')} -> ${esc(l.siteBId||l.siteBName||'-')}</div>`);
+            siteLineLayer.addLayer(line);
+          }
+          if(showSiteMarkers){
+            const aKey=`A|${aLat.toFixed(6)}|${aLon.toFixed(6)}|${esc(l.siteAId||'')}`;
+            const bKey=`B|${bLat.toFixed(6)}|${bLon.toFixed(6)}|${esc(l.siteBId||'')}`;
+            if(!markerDedup.has(aKey)){
+              markerDedup.add(aKey);
+              const ma=L.marker([aLat,aLon],{icon:siteIcon(),riseOnHover:true});
+              ma.bindPopup(`<div><b>Site A</b><br/>${esc(l.siteAId||l.siteAName||'-')}<br/>${esc(l.routeSegment||'-')}</div>`);
+              siteMarkerLayer.addLayer(ma);
+            }
+            if(!markerDedup.has(bKey)){
+              markerDedup.add(bKey);
+              const mb=L.marker([bLat,bLon],{icon:siteIcon(),riseOnHover:true});
+              mb.bindPopup(`<div><b>Site B</b><br/>${esc(l.siteBId||l.siteBName||'-')}<br/>${esc(l.routeSegment||'-')}</div>`);
+              siteMarkerLayer.addLayer(mb);
+            }
+          }
+          bounds.push([aLat,aLon]); bounds.push([bLat,bLon]);
+        }
+      }
       if(on&&hp.length>0){heat=L.heatLayer(hp,{radius:18,blur:15,minOpacity:0.3,maxZoom:13}).addTo(map);}
-      if(cluster.getLayers().length>0){
-        const b=cluster.getBounds();
+      if(bounds.length>0){
+        const b=L.latLngBounds(bounds);
         if(b.isValid()) map.fitBounds(b.pad(0.08));
       }
     }
@@ -447,8 +603,13 @@ namespace NOCREPORTGENERATOR.Pages
     if(window.chrome&&window.chrome.webview){
       window.chrome.webview.addEventListener('message',e=>{
         const d=e.data;
-        if(Array.isArray(d)){render(d,false);return;}
-        render((d&&Array.isArray(d.markers))?d.markers:[],!!(d&&d.heatmap));
+        if(Array.isArray(d)){render(d,false,[],false,false);return;}
+        render(
+          (d&&Array.isArray(d.markers))?d.markers:[],
+          !!(d&&d.heatmap),
+          (d&&Array.isArray(d.siteLinks))?d.siteLinks:[],
+          !!(d&&d.showSiteMarkers),
+          !!(d&&d.showSiteLines));
       });
     }
     window.centerToIndonesia=()=>map.setView([-2.5489,118.0149],5);
@@ -520,6 +681,8 @@ namespace NOCREPORTGENERATOR.Pages
         private async void StatusFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => await ApplySmartFilterAsync();
         private async void SeverityFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) => await ApplySmartFilterAsync();
         private async void HeatmapToggleSwitch_Toggled(object sender, RoutedEventArgs e) => await ApplySmartFilterAsync();
+        private async void SiteMarkersToggleSwitch_Toggled(object sender, RoutedEventArgs e) => await ApplySmartFilterAsync();
+        private async void SiteLinesToggleSwitch_Toggled(object sender, RoutedEventArgs e) => await ApplySmartFilterAsync();
 
         private async void ClearFilterButton_Click(object sender, RoutedEventArgs e)
         {
@@ -531,6 +694,8 @@ namespace NOCREPORTGENERATOR.Pages
             if (FromDatePicker.Date.HasValue) FromDatePicker.Date = null;
             if (ToDatePicker.Date.HasValue) ToDatePicker.Date = null;
             HeatmapToggleSwitch.IsOn = false;
+            SiteMarkersToggleSwitch.IsOn = true;
+            SiteLinesToggleSwitch.IsOn = true;
             await ApplySmartFilterAsync();
         }
 
@@ -552,9 +717,39 @@ namespace NOCREPORTGENERATOR.Pages
             catch (Exception ex) { DeveloperDiagnostics.LogError("LiveMapPage.ExportCsvButton_Click", ex); }
         }
 
+        private async void ImportSegmentPmButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ImportSegmentPmButton.IsEnabled = false;
+                MapFilterSummaryTextBlock.Text = "Mengimpor SEGMENTPM ke SQL cache...";
+                var result = await SegmentPmMapService.ImportFromWorkbookAsync(password: "no");
+                await LoadSiteLinksAsync();
+                await ApplySmartFilterAsync();
+                MapFilterSummaryTextBlock.Text =
+                    $"Import SEGMENTPM selesai: {result.InsertedLinks} link ({result.ProcessedRows} baris)";
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("LiveMapPage.ImportSegmentPmButton_Click", ex);
+                MapFilterSummaryTextBlock.Text = "Import SEGMENTPM gagal. Cek developer log.";
+            }
+            finally
+            {
+                ImportSegmentPmButton.IsEnabled = true;
+            }
+        }
+
         private static string Esc(string value) => string.IsNullOrWhiteSpace(value) ? string.Empty : (value.Contains('"') || value.Contains(',') || value.Contains('\n') || value.Contains('\r')) ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
 
-        private sealed class MapPayload { public List<MapPoint> Markers { get; set; } = new(); public bool Heatmap { get; set; } }
+        private sealed class MapPayload
+        {
+            public List<MapPoint> Markers { get; set; } = new();
+            public bool Heatmap { get; set; }
+            public List<SegmentPmMapService.SegmentSiteLinkPoint> SiteLinks { get; set; } = new();
+            public bool ShowSiteMarkers { get; set; }
+            public bool ShowSiteLines { get; set; }
+        }
         private sealed class MapPoint
         {
             public double Latitude { get; set; }
@@ -570,3 +765,4 @@ namespace NOCREPORTGENERATOR.Pages
         }
     }
 }
+

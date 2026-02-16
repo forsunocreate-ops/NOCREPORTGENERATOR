@@ -25,7 +25,17 @@ namespace NOCREPORTGENERATOR
             ["create-tt"] = 1,
             ["live-map"] = 2,
             ["history-tt"] = 3,
-            ["settings"] = 4
+            ["settings"] = 4,
+            ["incident-360"] = 5,
+            ["sla-monitor"] = 6,
+            ["command-center"] = 7,
+            ["rca-problem"] = 8,
+            ["workload-shift"] = 9,
+            ["automation-rules"] = 10,
+            ["integration-health"] = 11,
+            ["data-quality"] = 12,
+            ["notification-center"] = 13,
+            ["report-builder"] = 14
         };
         private string _currentTag = "dashboard";
 
@@ -54,6 +64,26 @@ namespace NOCREPORTGENERATOR
             HistoryTtNavButton.PointerExited += NavButton_PointerExited;
             SettingsNavButton.PointerEntered += NavButton_PointerEntered;
             SettingsNavButton.PointerExited += NavButton_PointerExited;
+            Incident360NavButton.PointerEntered += NavButton_PointerEntered;
+            Incident360NavButton.PointerExited += NavButton_PointerExited;
+            SlaMonitorNavButton.PointerEntered += NavButton_PointerEntered;
+            SlaMonitorNavButton.PointerExited += NavButton_PointerExited;
+            CommandCenterNavButton.PointerEntered += NavButton_PointerEntered;
+            CommandCenterNavButton.PointerExited += NavButton_PointerExited;
+            RcaNavButton.PointerEntered += NavButton_PointerEntered;
+            RcaNavButton.PointerExited += NavButton_PointerExited;
+            WorkloadNavButton.PointerEntered += NavButton_PointerEntered;
+            WorkloadNavButton.PointerExited += NavButton_PointerExited;
+            RulesNavButton.PointerEntered += NavButton_PointerEntered;
+            RulesNavButton.PointerExited += NavButton_PointerExited;
+            IntegrationNavButton.PointerEntered += NavButton_PointerEntered;
+            IntegrationNavButton.PointerExited += NavButton_PointerExited;
+            DataQualityNavButton.PointerEntered += NavButton_PointerEntered;
+            DataQualityNavButton.PointerExited += NavButton_PointerExited;
+            NotificationNavButton.PointerEntered += NavButton_PointerEntered;
+            NotificationNavButton.PointerExited += NavButton_PointerExited;
+            ReportBuilderNavButton.PointerEntered += NavButton_PointerEntered;
+            ReportBuilderNavButton.PointerExited += NavButton_PointerExited;
 
             TryInitializeLottiePulse();
             LogUiStackStatus();
@@ -152,6 +182,46 @@ namespace NOCREPORTGENERATOR
                     pageType = typeof(SettingsPage);
                     pageTitle = "Settings";
                     break;
+                case "incident-360":
+                    pageType = typeof(IncidentDetail360Page);
+                    pageTitle = "Incident Detail 360";
+                    break;
+                case "sla-monitor":
+                    pageType = typeof(SlaBreachMonitorPage);
+                    pageTitle = "SLA Breach Monitor";
+                    break;
+                case "command-center":
+                    pageType = typeof(NocCommandCenterPage);
+                    pageTitle = "NOC Command Center";
+                    break;
+                case "rca-problem":
+                    pageType = typeof(RcaProblemManagementPage);
+                    pageTitle = "RCA & Problem";
+                    break;
+                case "workload-shift":
+                    pageType = typeof(WorkloadShiftPlannerPage);
+                    pageTitle = "Workload & Shift";
+                    break;
+                case "automation-rules":
+                    pageType = typeof(AutomationRulesPage);
+                    pageTitle = "Automation Rules";
+                    break;
+                case "integration-health":
+                    pageType = typeof(IntegrationHealthPage);
+                    pageTitle = "Integration Health";
+                    break;
+                case "data-quality":
+                    pageType = typeof(DataQualityCenterPage);
+                    pageTitle = "Data Quality Center";
+                    break;
+                case "notification-center":
+                    pageType = typeof(NotificationCenterPage);
+                    pageTitle = "Notification Center";
+                    break;
+                case "report-builder":
+                    pageType = typeof(ReportBuilderPage);
+                    pageTitle = "Report Builder";
+                    break;
                 default:
                     pageType = typeof(DashboardPage);
                     pageTitle = "Dashboard";
@@ -234,6 +304,16 @@ namespace NOCREPORTGENERATOR
             ApplyNavButtonState(LiveMapNavButton, "live-map", selectedTag);
             ApplyNavButtonState(HistoryTtNavButton, "history-tt", selectedTag);
             ApplyNavButtonState(SettingsNavButton, "settings", selectedTag);
+            ApplyNavButtonState(Incident360NavButton, "incident-360", selectedTag);
+            ApplyNavButtonState(SlaMonitorNavButton, "sla-monitor", selectedTag);
+            ApplyNavButtonState(CommandCenterNavButton, "command-center", selectedTag);
+            ApplyNavButtonState(RcaNavButton, "rca-problem", selectedTag);
+            ApplyNavButtonState(WorkloadNavButton, "workload-shift", selectedTag);
+            ApplyNavButtonState(RulesNavButton, "automation-rules", selectedTag);
+            ApplyNavButtonState(IntegrationNavButton, "integration-health", selectedTag);
+            ApplyNavButtonState(DataQualityNavButton, "data-quality", selectedTag);
+            ApplyNavButtonState(NotificationNavButton, "notification-center", selectedTag);
+            ApplyNavButtonState(ReportBuilderNavButton, "report-builder", selectedTag);
         }
 
         private void ApplyNavButtonState(Button button, string buttonTag, string selectedTag)

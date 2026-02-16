@@ -39,6 +39,16 @@
                         <Setter Target="LiveMapNavText.Visibility" Value="Visible" />
                         <Setter Target="HistoryTtNavText.Visibility" Value="Visible" />
                         <Setter Target="SettingsNavText.Visibility" Value="Visible" />
+                        <Setter Target="Incident360NavText.Visibility" Value="Visible" />
+                        <Setter Target="SlaMonitorNavText.Visibility" Value="Visible" />
+                        <Setter Target="CommandCenterNavText.Visibility" Value="Visible" />
+                        <Setter Target="RcaNavText.Visibility" Value="Visible" />
+                        <Setter Target="WorkloadNavText.Visibility" Value="Visible" />
+                        <Setter Target="RulesNavText.Visibility" Value="Visible" />
+                        <Setter Target="IntegrationNavText.Visibility" Value="Visible" />
+                        <Setter Target="DataQualityNavText.Visibility" Value="Visible" />
+                        <Setter Target="NotificationNavText.Visibility" Value="Visible" />
+                        <Setter Target="ReportBuilderNavText.Visibility" Value="Visible" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="CompactState">
@@ -55,6 +65,16 @@
                         <Setter Target="LiveMapNavText.Visibility" Value="Collapsed" />
                         <Setter Target="HistoryTtNavText.Visibility" Value="Collapsed" />
                         <Setter Target="SettingsNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="Incident360NavText.Visibility" Value="Collapsed" />
+                        <Setter Target="SlaMonitorNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="CommandCenterNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="RcaNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="WorkloadNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="RulesNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="IntegrationNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="DataQualityNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="NotificationNavText.Visibility" Value="Collapsed" />
+                        <Setter Target="ReportBuilderNavText.Visibility" Value="Collapsed" />
                         <Setter Target="WindowSubtitleTextBlock.Visibility" Value="Collapsed" />
                         <Setter Target="CurrentPageTitleTextBlock.FontSize" Value="24" />
                         <Setter Target="WorkspaceBadgeBorder.Visibility" Value="Collapsed" />
@@ -102,7 +122,6 @@
                 Style="{StaticResource ShellGlassCardStyle}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
@@ -167,71 +186,194 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="4">
-                        <TextBlock
-                            Margin="6,0,0,4"
-                            Foreground="{StaticResource ShellMutedForegroundBrush}"
-                            Style="{StaticResource ShellSectionCaptionStyle}"
-                            Text="Navigation" />
+                    <ScrollViewer
+                        Grid.Row="1"
+                        Margin="0,16,0,10"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto"
+                        VerticalScrollMode="Enabled">
+                        <StackPanel Spacing="4">
+                            <TextBlock
+                                Margin="6,0,0,4"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Style="{StaticResource ShellSectionCaptionStyle}"
+                                Text="Navigation" />
 
-                        <Button
-                            x:Name="DashboardNavButton"
-                            Click="NavButton_Click"
-                            Style="{StaticResource ShellNavButtonStyle}"
-                            Tag="dashboard">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE1D;" />
-                                <TextBlock x:Name="DashboardNavText" Text="Dashboard" />
-                            </StackPanel>
-                        </Button>
+                            <Button
+                                x:Name="DashboardNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="dashboard">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE1D;" />
+                                    <TextBlock x:Name="DashboardNavText" Text="Dashboard" />
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="CreateTtNavButton"
-                            Click="NavButton_Click"
-                            Style="{StaticResource ShellNavButtonStyle}"
-                            Tag="create-tt">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFE0;" />
-                                <TextBlock x:Name="CreateTtNavText" Text="Create TT" />
-                            </StackPanel>
-                        </Button>
+                            <Button
+                                x:Name="CreateTtNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="create-tt">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFE0;" />
+                                    <TextBlock x:Name="CreateTtNavText" Text="Create TT" />
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="LiveMapNavButton"
-                            Click="NavButton_Click"
-                            Style="{StaticResource ShellNavButtonStyle}"
-                            Tag="live-map">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF08;" />
-                                <TextBlock x:Name="LiveMapNavText" Text="Live Map" />
-                            </StackPanel>
-                        </Button>
+                            <Button
+                                x:Name="LiveMapNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="live-map">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF08;" />
+                                    <TextBlock x:Name="LiveMapNavText" Text="Live Map" />
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="HistoryTtNavButton"
-                            Click="NavButton_Click"
-                            Style="{StaticResource ShellNavButtonStyle}"
-                            Tag="history-tt">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE17;" />
-                                <TextBlock x:Name="HistoryTtNavText" Text="History TT" />
-                            </StackPanel>
-                        </Button>
+                            <Button
+                                x:Name="HistoryTtNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="history-tt">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE17;" />
+                                    <TextBlock x:Name="HistoryTtNavText" Text="History TT" />
+                                </StackPanel>
+                            </Button>
 
-                        <Button
-                            x:Name="SettingsNavButton"
-                            Click="NavButton_Click"
-                            Style="{StaticResource ShellNavButtonStyle}"
-                            Tag="settings">
-                            <StackPanel Orientation="Horizontal" Spacing="10">
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0E5;" />
-                                <TextBlock x:Name="SettingsNavText" Text="Settings" />
-                            </StackPanel>
-                        </Button>
-                    </StackPanel>
+                            <Button
+                                x:Name="SettingsNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="settings">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0E5;" />
+                                    <TextBlock x:Name="SettingsNavText" Text="Settings" />
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock
+                                Margin="6,8,0,4"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Style="{StaticResource ShellSectionCaptionStyle}"
+                                Text="Advanced Ops" />
+
+                            <Button
+                                x:Name="Incident360NavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="incident-360">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE53;" />
+                                    <TextBlock x:Name="Incident360NavText" Text="Incident 360" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="SlaMonitorNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="sla-monitor">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
+                                    <TextBlock x:Name="SlaMonitorNavText" Text="SLA Monitor" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="CommandCenterNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="command-center">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF18E;" />
+                                    <TextBlock x:Name="CommandCenterNavText" Text="Command Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="RcaNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="rca-problem">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC81;" />
+                                    <TextBlock x:Name="RcaNavText" Text="RCA Problem" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="WorkloadNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="workload-shift">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFFF;" />
+                                    <TextBlock x:Name="WorkloadNavText" Text="Workload Shift" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="RulesNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="automation-rules">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFC8;" />
+                                    <TextBlock x:Name="RulesNavText" Text="Automation Rules" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="IntegrationNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="integration-health">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEDDC;" />
+                                    <TextBlock x:Name="IntegrationNavText" Text="Integration Health" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="DataQualityNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="data-quality">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF1B1;" />
+                                    <TextBlock x:Name="DataQualityNavText" Text="Data Quality" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="NotificationNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="notification-center">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEEA5;" />
+                                    <TextBlock x:Name="NotificationNavText" Text="Notification Center" />
+                                </StackPanel>
+                            </Button>
+
+                            <Button
+                                x:Name="ReportBuilderNavButton"
+                                Click="NavButton_Click"
+                                Style="{StaticResource ShellNavButtonStyle}"
+                                Tag="report-builder">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF8A;" />
+                                    <TextBlock x:Name="ReportBuilderNavText" Text="Report Builder" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </ScrollViewer>
 
                     <Border
-                        Grid.Row="3"
+                        Grid.Row="2"
                         Padding="12"
                         Background="#66FFFFFF"
                         BorderBrush="{StaticResource ShellPanelBorderBrush}"

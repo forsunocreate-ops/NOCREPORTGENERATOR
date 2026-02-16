@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using NOCREPORTGENERATOR.Services;
+using QuestPDF.Infrastructure;
 using System;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ namespace NOCREPORTGENERATOR
         public App()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            QuestPDF.Settings.License = LicenseType.Community;
             InitializeComponent();
             UnhandledException += App_UnhandledException;
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
