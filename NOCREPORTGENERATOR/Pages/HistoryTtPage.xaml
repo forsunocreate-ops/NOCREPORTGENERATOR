@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fluentIcons="using:FluentIcons.WinUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     <Page.Transitions>
@@ -170,7 +171,7 @@
                         Click="ClearSearchButton_Click"
                         Style="{StaticResource ShellSecondaryButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB99;" />
+                            <fluentIcons:SymbolIcon Symbol="DismissCircle" />
                             <TextBlock Text="Clear Search" />
                         </StackPanel>
                     </Button>
@@ -306,7 +307,7 @@
                                         CommandParameter="{Binding}"
                                         HorizontalAlignment="Center"
                                         Style="{StaticResource ShellSecondaryButtonStyle}">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC2A;" />
+                                        <fluentIcons:SymbolIcon Symbol="DismissCircle" />
                                     </Button>
                                 </DataTemplate>
                             </controls:DataGridTemplateColumn.CellTemplate>
@@ -327,7 +328,7 @@
                         Click="PrevPageButton_Click"
                         Style="{StaticResource ShellSecondaryButtonStyle}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEA64;" />
+                            <fluentIcons:SymbolIcon Symbol="ArrowLeft" />
                             <TextBlock Text="Prev" />
                         </StackPanel>
                     </Button>
@@ -354,7 +355,7 @@
                             Style="{StaticResource ShellSecondaryButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="Next" />
-                                <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEA6E;" />
+                                <fluentIcons:SymbolIcon Symbol="ArrowRight" />
                             </StackPanel>
                         </Button>
                     </StackPanel>

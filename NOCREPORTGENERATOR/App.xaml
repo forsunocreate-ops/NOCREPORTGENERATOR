@@ -59,8 +59,6 @@
             <SolidColorBrush x:Key="ShellContentBadgeBackgroundBrush" Color="#EAF3FF" />
             <SolidColorBrush x:Key="ShellContentBadgeBorderBrush" Color="#FFD4E5F6" />
             <SolidColorBrush x:Key="ShellImportProgressBackgroundBrush" Color="#FFFDFEFF" />
-            <FontFamily x:Key="RemixIconFontFamily">ms-appx:///Assets/Fonts/remixicon.ttf#remixicon</FontFamily>
-
             <Style x:Key="ShellGlassCardStyle" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource ShellPanelBackgroundBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource ShellPanelBorderBrush}" />

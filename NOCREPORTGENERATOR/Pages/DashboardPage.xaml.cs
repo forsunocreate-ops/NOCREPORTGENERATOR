@@ -2,6 +2,7 @@ using LiveChartsCore;
 using LiveChartsCore.Measure;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using FluentSymbol = FluentIcons.Common.Symbol;
 using Microsoft.Graphics.Canvas.Brushes;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI;
@@ -1217,9 +1218,9 @@ namespace NOCREPORTGENERATOR.Pages
                 };
                 canvas.Draw += DashboardHeroGlowCanvas_Draw;
 
-                var icon = new FontIcon
+                var icon = new FluentIcons.WinUI.SymbolIcon
                 {
-                    Glyph = "\uE9D2",
+                    Symbol = FluentSymbol.Board,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center,
                     Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["ShellHeroPrimaryTextBrush"]

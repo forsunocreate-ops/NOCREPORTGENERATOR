@@ -19,6 +19,7 @@ using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
 using WinRT.Interop;
+using FluentSymbol = FluentIcons.Common.Symbol;
 
 namespace NOCREPORTGENERATOR.Pages
 {
@@ -378,6 +379,14 @@ namespace NOCREPORTGENERATOR.Pages
             SetMsgStatus("Tab diduplikasi.");
         }
 
+        private static IconElement CreateFluentSymbolIcon(FluentSymbol symbol)
+        {
+            return new FluentIcons.WinUI.SymbolIcon
+            {
+                Symbol = symbol
+            };
+        }
+
         private MenuFlyout CreateTabContextFlyout(string tabId)
         {
             var flyout = new MenuFlyout();
@@ -385,7 +394,7 @@ namespace NOCREPORTGENERATOR.Pages
             var renameItem = new MenuFlyoutItem
             {
                 Text = "Rename",
-                Icon = new SymbolIcon(Symbol.Edit),
+                Icon = CreateFluentSymbolIcon(FluentSymbol.Edit),
                 Tag = tabId
             };
             renameItem.Click += RenameTabMenuItem_Click;
@@ -394,7 +403,7 @@ namespace NOCREPORTGENERATOR.Pages
             var duplicateItem = new MenuFlyoutItem
             {
                 Text = "Duplicate",
-                Icon = new SymbolIcon(Symbol.Copy),
+                Icon = CreateFluentSymbolIcon(FluentSymbol.Document),
                 Tag = tabId
             };
             duplicateItem.Click += DuplicateTabMenuItem_Click;
@@ -403,7 +412,7 @@ namespace NOCREPORTGENERATOR.Pages
             var closeOthersItem = new MenuFlyoutItem
             {
                 Text = "Close Others",
-                Icon = new SymbolIcon(Symbol.Cancel),
+                Icon = CreateFluentSymbolIcon(FluentSymbol.DismissCircle),
                 Tag = tabId
             };
             closeOthersItem.Click += CloseOtherTabsMenuItem_Click;

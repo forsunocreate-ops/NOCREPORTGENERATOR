@@ -4,6 +4,7 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:fluentIcons="using:FluentIcons.WinUI"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
 
@@ -138,7 +139,7 @@
                                     Click="MapCenterButton_Click"
                                     Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF0A;" />
+                                        <fluentIcons:SymbolIcon Symbol="Map" />
                                         <TextBlock Text="Center to Indonesia" />
                                     </StackPanel>
                                 </Button>
@@ -216,7 +217,7 @@
                                     VerticalAlignment="Center"
                                     Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
+                                        <fluentIcons:SymbolIcon Symbol="ArrowUpload" />
                                         <TextBlock x:Name="ImportSegmentPmTextBlock" Text="Import SegmentPM" />
                                     </StackPanel>
                                 </Button>
@@ -228,7 +229,7 @@
                                     VerticalAlignment="Center"
                                     Style="{StaticResource ShellSecondaryButtonStyle}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECD9;" />
+                                        <fluentIcons:SymbolIcon Symbol="Document" />
                                         <TextBlock x:Name="ExportCsvTextBlock" Text="Export CSV" />
                                     </StackPanel>
                                 </Button>
@@ -488,7 +489,7 @@
                     Style="{StaticResource ShellSecondaryButtonStyle}"
                     Visibility="Collapsed">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE4D;" />
+                        <fluentIcons:SymbolIcon Symbol="DocumentSearch" />
                         <TextBlock Text="Search" />
                     </StackPanel>
                 </Button>
