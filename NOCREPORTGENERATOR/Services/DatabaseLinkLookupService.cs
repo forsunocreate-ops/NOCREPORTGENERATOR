@@ -135,6 +135,16 @@ namespace NOCREPORTGENERATOR.Services
             }
         }
 
+        public static async Task RefreshCacheAsync()
+        {
+            lock (Sync)
+            {
+                _cacheTask = null;
+            }
+
+            await GetCacheAsync();
+        }
+
         private static LookupCache LoadCache()
         {
             var sourcePath = ResolveDatabasePath();

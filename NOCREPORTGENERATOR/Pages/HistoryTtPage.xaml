@@ -14,10 +14,6 @@
         </TransitionCollection>
     </Page.Transitions>
     <Page.Resources>
-        <SolidColorBrush x:Key="HistoryHeroBackgroundBrush" Color="#F5FAFF" />
-        <SolidColorBrush x:Key="HistoryCardBackgroundBrush" Color="#FCFFFFFF" />
-        <SolidColorBrush x:Key="HistorySoftBorderBrush" Color="#1F2B4D73" />
-
         <Style x:Key="HistoryLinkButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -26,17 +22,16 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Foreground" Value="{StaticResource ShellNavForegroundBrush}" />
         </Style>
-        <Style x:Key="HistoryKpiCardStyle" TargetType="Border">
-            <Setter Property="Padding" Value="12" />
-            <Setter Property="CornerRadius" Value="12" />
-            <Setter Property="Background" Value="{StaticResource HistoryCardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{StaticResource HistorySoftBorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
+        <Style
+            x:Key="HistoryKpiCardStyle"
+            BasedOn="{StaticResource ShellGlassSubtleCardStyle}"
+            TargetType="Border">
+            <Setter Property="Padding" Value="14" />
         </Style>
     </Page.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid x:Name="HistoryRootGrid" Padding="16" RowSpacing="12">
+        <Grid x:Name="HistoryRootGrid" Padding="20" RowSpacing="16">
         <VisualStateManager.VisualStateGroups>
             <VisualStateGroup>
                 <VisualState x:Name="HistoryWideState">
@@ -44,7 +39,7 @@
                         <AdaptiveTrigger MinWindowWidth="1200" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="HistoryRootGrid.Padding" Value="16" />
+                        <Setter Target="HistoryRootGrid.Padding" Value="20" />
                     </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="HistoryCompactState">
@@ -52,7 +47,7 @@
                         <AdaptiveTrigger MinWindowWidth="0" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="HistoryRootGrid.Padding" Value="10" />
+                        <Setter Target="HistoryRootGrid.Padding" Value="12" />
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
@@ -63,7 +58,7 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-            <StackPanel Spacing="4">
+            <StackPanel Spacing="6">
                 <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Ticket Archive" />
                 <TextBlock
                     Style="{StaticResource ShellHeroTitleTextStyle}"
@@ -76,12 +71,8 @@
 
         <Border
             Grid.Row="1"
-            Background="{StaticResource HistoryCardBackgroundBrush}"
-            BorderBrush="{StaticResource HistorySoftBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="16"
-            Padding="14">
-            <Grid RowSpacing="10">
+            Style="{StaticResource ShellGlassCardStyle}">
+            <Grid RowSpacing="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
@@ -91,7 +82,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" ColumnSpacing="10">
+                <Grid Grid.Row="0" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
@@ -136,13 +127,10 @@
 
                 <Border
                     Grid.Row="2"
-                    Padding="10"
-                    Background="{StaticResource HistoryCardBackgroundBrush}"
-                    BorderBrush="{StaticResource HistorySoftBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                    Padding="12"
+                    Style="{StaticResource ShellGlassSubtleCardStyle}">
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <Grid ColumnSpacing="10" MinWidth="760">
+                        <Grid ColumnSpacing="12" MinWidth="760">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2.2*" />
                         <ColumnDefinition Width="Auto" />
@@ -192,13 +180,10 @@
 
                 <Border
                     Grid.Row="3"
-                    Padding="10"
-                    Background="{StaticResource HistoryCardBackgroundBrush}"
-                    BorderBrush="{StaticResource HistorySoftBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="12">
+                    Padding="12"
+                    Style="{StaticResource ShellGlassSubtleCardStyle}">
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <Grid ColumnSpacing="10" MinWidth="1380">
+                        <Grid ColumnSpacing="12" MinWidth="1380">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="190" />
@@ -329,7 +314,7 @@
                     </controls:DataGrid.Columns>
                 </controls:DataGrid>
 
-                <Grid Grid.Row="5" ColumnSpacing="10">
+                <Grid Grid.Row="5" ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Page
     x:Class="NOCREPORTGENERATOR.Pages.NotificationCenterPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -11,12 +11,12 @@
     <Page.Transitions>
         <TransitionCollection>
             <NavigationThemeTransition />
-            <EntranceThemeTransition FromVerticalOffset="12" />
+            <EntranceThemeTransition FromVerticalOffset="16" />
         </TransitionCollection>
     </Page.Transitions>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid Padding="16" RowSpacing="12">
+        <Grid Padding="20" RowSpacing="16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -26,7 +26,7 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="6">
                     <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Advanced Workspace" />
                     <TextBlock Style="{StaticResource ShellHeroTitleTextStyle}" Text="Notification Center" />
                     <TextBlock Foreground="{StaticResource ShellHeroSecondaryTextBrush}" Text="Inbox alert operasional: SLA risk, perubahan status, eskalasi, dan reminder action." />
@@ -34,12 +34,12 @@
             </Border>
 
             <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
-                <Grid ColumnSpacing="10">
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="6">
                         <TextBlock x:Name="SummaryTextBlock" Style="{StaticResource ShellSectionTitleStyle}" Text="Loading data..." />
                         <TextBlock x:Name="LastUpdatedTextBlock" Style="{StaticResource ShellSectionCaptionStyle}" Text="Updated -" />
                     </StackPanel>
@@ -47,7 +47,7 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="2" ColumnSpacing="10">
+            <Grid Grid.Row="2" ColumnSpacing="12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
@@ -55,21 +55,21 @@
                 </Grid.ColumnDefinitions>
 
                 <Border Grid.Column="0" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="6">
                         <TextBlock x:Name="Kpi1LabelTextBlock" Style="{StaticResource ShellSectionCaptionStyle}" Text="KPI 1" />
                         <TextBlock x:Name="Kpi1ValueTextBlock" Style="{StaticResource ShellSectionTitleStyle}" Text="0" />
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="1" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="6">
                         <TextBlock x:Name="Kpi2LabelTextBlock" Style="{StaticResource ShellSectionCaptionStyle}" Text="KPI 2" />
                         <TextBlock x:Name="Kpi2ValueTextBlock" Style="{StaticResource ShellSectionTitleStyle}" Text="0" />
                     </StackPanel>
                 </Border>
 
                 <Border Grid.Column="2" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="6">
                         <TextBlock x:Name="Kpi3LabelTextBlock" Style="{StaticResource ShellSectionCaptionStyle}" Text="KPI 3" />
                         <TextBlock x:Name="Kpi3ValueTextBlock" Style="{StaticResource ShellSectionTitleStyle}" Text="0" />
                     </StackPanel>
@@ -132,7 +132,7 @@
             </Grid>
 
             <Border Grid.Row="4" Style="{StaticResource ShellGlassCardStyle}">
-                <Grid ColumnSpacing="10">
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*" />
                         <ColumnDefinition Width="Auto" />

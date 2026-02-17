@@ -38,6 +38,7 @@ namespace NOCREPORTGENERATOR.Services
         private const int ColLongitude = 43;     // AR
         private const int ColPic = 55;           // BD
         private const int ColTitle = 61;         // BJ
+        private static readonly Regex NumericRoutePairRegex = new(@"^\s*(?<a>\d{5,8})\s*[-/]\s*(?<b>\d{5,8})\s*$", RegexOptions.Compiled);
 
         public static Task<ImportPreviewResult> BuildPreviewAsync(
             string filePath,
@@ -62,6 +63,8 @@ namespace NOCREPORTGENERATOR.Services
                 var result = new ImportExecutionResult();
                 var upsertContext = await LocalFormStorageService.CreateBulkUpsertByTtIohContextAsync();
                 var segmentRouteLookup = await BuildSegmentRouteLookupAsync();
+                var segmentPmByTtIoh = await DatabaseTtSegmentPmLookupService.GetSegmentPmByTtIohAsync(cancellationToken: cancellationToken);
+                var segmentPmByRoute = await SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(password: "no", cancellationToken: cancellationToken);
                 using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 using var reader = ExcelReaderFactory.CreateReader(stream);
 
@@ -85,7 +88,7 @@ namespace NOCREPORTGENERATOR.Services
                         cancellationToken.ThrowIfCancellationRequested();
                         result.TotalRowsRead++;
 
-                        var record = TryBuildRecord(reader, segmentRouteLookup);
+                        var record = TryBuildRecord(reader, segmentRouteLookup, segmentPmByTtIoh, segmentPmByRoute);
                         if (record is null)
                         {
                             result.SkippedRows++;
@@ -154,6 +157,8 @@ namespace NOCREPORTGENERATOR.Services
             var target = Math.Max(1, takeCount);
             var result = new ImportPreviewResult();
             var segmentRouteLookup = BuildSegmentRouteLookupAsync().GetAwaiter().GetResult();
+            var segmentPmByTtIoh = DatabaseTtSegmentPmLookupService.GetSegmentPmByTtIohAsync(cancellationToken: cancellationToken).GetAwaiter().GetResult();
+            var segmentPmByRoute = SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(password: "no", cancellationToken: cancellationToken).GetAwaiter().GetResult();
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var reader = ExcelReaderFactory.CreateReader(stream);
 
@@ -172,7 +177,7 @@ namespace NOCREPORTGENERATOR.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     result.TotalRowsRead++;
-                    var record = TryBuildRecord(reader, segmentRouteLookup);
+                    var record = TryBuildRecord(reader, segmentRouteLookup, segmentPmByTtIoh, segmentPmByRoute);
                     if (record is null)
                     {
                         emptyStreak++;
@@ -207,7 +212,9 @@ namespace NOCREPORTGENERATOR.Services
 
         private static LocalFormRecord? TryBuildRecord(
             IExcelDataReader reader,
-            IReadOnlyDictionary<string, SegmentRouteLookupItem> segmentRouteLookup)
+            IReadOnlyDictionary<string, SegmentRouteLookupItem> segmentRouteLookup,
+            IReadOnlyDictionary<string, string> segmentPmByTtIoh,
+            IReadOnlyDictionary<string, IReadOnlyList<string>> segmentPmByRoute)
         {
             var ttIoh = NormalizeTtIoh(GetText(reader, ColTtIoh));
             if (string.IsNullOrWhiteSpace(ttIoh))
@@ -244,6 +251,20 @@ namespace NOCREPORTGENERATOR.Services
                 }
             }
 
+            var progressRaw = GetText(reader, ColProgress);
+            var segmentPm = DatabaseTtSegmentPmLookupService.ExtractSegmentPmFromProgress(progressRaw);
+            if (string.IsNullOrWhiteSpace(segmentPm) &&
+                !string.IsNullOrWhiteSpace(ttIoh) &&
+                segmentPmByTtIoh.TryGetValue(ttIoh, out var fallbackSegmentPm))
+            {
+                segmentPm = fallbackSegmentPm;
+            }
+
+            if (string.IsNullOrWhiteSpace(segmentPm))
+            {
+                segmentPm = ResolveSegmentPmFromRoute(resolvedSegmentRoute, segmentPmByRoute);
+            }
+
             var now = DateTimeOffset.Now;
 
             return new LocalFormRecord
@@ -262,10 +283,47 @@ namespace NOCREPORTGENERATOR.Services
                 ShowSegmentRoute = true,
                 ShowSystemKey = false,
                 SegmentRoute = resolvedSegmentRoute,
+                SegmentPm = segmentPm,
                 SystemKey = string.Empty,
                 Coordinate = coordinate,
-                UpdateProgress = FormatUpdateProgress(GetText(reader, ColProgress))
+                UpdateProgress = FormatUpdateProgress(progressRaw)
             };
+        }
+
+        private static string ResolveSegmentPmFromRoute(
+            string? route,
+            IReadOnlyDictionary<string, IReadOnlyList<string>> segmentPmByRoute)
+        {
+            if (string.IsNullOrWhiteSpace(route) || segmentPmByRoute.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (segmentPmByRoute.TryGetValue(route, out var values) && values.Count > 0)
+            {
+                return values[0];
+            }
+
+            var reversed = TryReverseNumericRoutePair(route);
+            if (!string.IsNullOrWhiteSpace(reversed) &&
+                segmentPmByRoute.TryGetValue(reversed, out values) &&
+                values.Count > 0)
+            {
+                return values[0];
+            }
+
+            return string.Empty;
+        }
+
+        private static string TryReverseNumericRoutePair(string route)
+        {
+            var match = NumericRoutePairRegex.Match(route ?? string.Empty);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            return match.Groups["b"].Value + "-" + match.Groups["a"].Value;
         }
 
         private static async Task<IReadOnlyDictionary<string, SegmentRouteLookupItem>> BuildSegmentRouteLookupAsync()

@@ -22,6 +22,7 @@ namespace NOCREPORTGENERATOR.Models
         public bool ShowSegmentRoute { get; set; } = true;
         public bool ShowSystemKey { get; set; } = true;
         public string SegmentRoute { get; set; } = string.Empty;
+        public string SegmentPm { get; set; } = string.Empty;
         public string SystemKey { get; set; } = string.Empty;
         public string Coordinate { get; set; } = string.Empty;
         public string UpdateProgress { get; set; } = string.Empty;

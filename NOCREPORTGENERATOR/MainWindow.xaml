@@ -5,14 +5,13 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:fluentIcons="using:FluentIcons.WinUI"
-    xmlns:materialIcons="using:Material.Icons.WinUI3"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winex="using:WinUIEx"
     mc:Ignorable="d"
     Title="NOC Report Generator">
 
     <Window.SystemBackdrop>
-        <DesktopAcrylicBackdrop />
+        <MicaBackdrop Kind="BaseAlt" />
     </Window.SystemBackdrop>
 
     <Grid x:Name="WindowRootGrid" Background="{StaticResource ShellBackgroundBrush}">
@@ -93,9 +92,10 @@
             x:Name="AppTitleBarDragRegion"
             Grid.Row="0"
             Padding="16,6,160,6"
-            Background="#1AFFFFFF">
+            Background="{StaticResource ShellTitleBarBackgroundBrush}">
             <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
                 <TextBlock
+                    FontFamily="{StaticResource ShellDisplayFontFamily}"
                     FontSize="19"
                     FontWeight="SemiBold"
                     Foreground="{StaticResource ShellTitleForegroundBrush}"
@@ -154,8 +154,8 @@
                                     <Border
                                         Width="28"
                                         Height="28"
-                                        Background="#3AFFFFFF"
-                                        BorderBrush="#55FFFFFF"
+                                        Background="{StaticResource ShellWorkspaceBadgeBackgroundBrush}"
+                                        BorderBrush="{StaticResource ShellWorkspaceBadgeBorderBrush}"
                                         BorderThickness="1"
                                         CornerRadius="14">
                                         <TextBlock
@@ -164,7 +164,7 @@
                                             Foreground="{StaticResource ShellHeroPrimaryTextBrush}"
                                             Text="N" />
                                     </Border>
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Glyph="&#xF181;" />
+                                    <fluentIcons:SymbolIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Symbol="Board" />
                                     <Border
                                         x:Name="LottiePulseHost"
                                         Width="22"
@@ -179,8 +179,8 @@
                                 Height="52"
                                 HorizontalAlignment="Right"
                                 VerticalAlignment="Top"
-                                Background="#30FFFFFF"
-                                BorderBrush="#55FFFFFF"
+                                Background="{StaticResource ShellWorkspaceBadgeBackgroundBrush}"
+                                BorderBrush="{StaticResource ShellWorkspaceBadgeBorderBrush}"
                                 BorderThickness="1"
                                 CornerRadius="26" />
                         </Grid>
@@ -205,7 +205,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="dashboard">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE1D;" />
+                                    <fluentIcons:SymbolIcon Symbol="Home" />
                                     <TextBlock x:Name="DashboardNavText" Text="Dashboard" />
                                 </StackPanel>
                             </Button>
@@ -216,7 +216,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="create-tt">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFE0;" />
+                                    <fluentIcons:SymbolIcon Symbol="Edit" />
                                     <TextBlock x:Name="CreateTtNavText" Text="Create TT" />
                                 </StackPanel>
                             </Button>
@@ -227,7 +227,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="live-map">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF08;" />
+                                    <fluentIcons:SymbolIcon Symbol="Map" />
                                     <TextBlock x:Name="LiveMapNavText" Text="Live Map" />
                                 </StackPanel>
                             </Button>
@@ -238,7 +238,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="history-tt">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE17;" />
+                                    <fluentIcons:SymbolIcon Symbol="History" />
                                     <TextBlock x:Name="HistoryTtNavText" Text="History TT" />
                                 </StackPanel>
                             </Button>
@@ -249,7 +249,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="settings">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF0E5;" />
+                                    <fluentIcons:SymbolIcon Symbol="Settings" />
                                     <TextBlock x:Name="SettingsNavText" Text="Settings" />
                                 </StackPanel>
                             </Button>
@@ -266,7 +266,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="incident-360">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE53;" />
+                                    <fluentIcons:SymbolIcon Symbol="Warning" />
                                     <TextBlock x:Name="Incident360NavText" Text="Incident 360" />
                                 </StackPanel>
                             </Button>
@@ -277,7 +277,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="sla-monitor">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
+                                    <fluentIcons:SymbolIcon Symbol="Clock" />
                                     <TextBlock x:Name="SlaMonitorNavText" Text="SLA Monitor" />
                                 </StackPanel>
                             </Button>
@@ -288,7 +288,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="command-center">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF18E;" />
+                                    <fluentIcons:SymbolIcon Symbol="Grid" />
                                     <TextBlock x:Name="CommandCenterNavText" Text="Command Center" />
                                 </StackPanel>
                             </Button>
@@ -299,7 +299,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="rca-problem">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC81;" />
+                                    <fluentIcons:SymbolIcon Symbol="Bug" />
                                     <TextBlock x:Name="RcaNavText" Text="RCA Problem" />
                                 </StackPanel>
                             </Button>
@@ -310,7 +310,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="workload-shift">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFFF;" />
+                                    <fluentIcons:SymbolIcon Symbol="People" />
                                     <TextBlock x:Name="WorkloadNavText" Text="Workload Shift" />
                                 </StackPanel>
                             </Button>
@@ -321,7 +321,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="automation-rules">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEFC8;" />
+                                    <fluentIcons:SymbolIcon Symbol="TaskList" />
                                     <TextBlock x:Name="RulesNavText" Text="Automation Rules" />
                                 </StackPanel>
                             </Button>
@@ -332,7 +332,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="integration-health">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEDDC;" />
+                                    <fluentIcons:SymbolIcon Symbol="Server" />
                                     <TextBlock x:Name="IntegrationNavText" Text="Integration Health" />
                                 </StackPanel>
                             </Button>
@@ -343,7 +343,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="data-quality">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF1B1;" />
+                                    <fluentIcons:SymbolIcon Symbol="DataHistogram" />
                                     <TextBlock x:Name="DataQualityNavText" Text="Data Quality" />
                                 </StackPanel>
                             </Button>
@@ -354,7 +354,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="notification-center">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEEA5;" />
+                                    <fluentIcons:SymbolIcon Symbol="Alert" />
                                     <TextBlock x:Name="NotificationNavText" Text="Notification Center" />
                                 </StackPanel>
                             </Button>
@@ -365,7 +365,7 @@
                                 Style="{StaticResource ShellNavButtonStyle}"
                                 Tag="report-builder">
                                 <StackPanel Orientation="Horizontal" Spacing="10">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF8A;" />
+                                    <fluentIcons:SymbolIcon Symbol="Document" />
                                     <TextBlock x:Name="ReportBuilderNavText" Text="Report Builder" />
                                 </StackPanel>
                             </Button>
@@ -375,7 +375,7 @@
                     <Border
                         Grid.Row="2"
                         Padding="12"
-                        Background="#66FFFFFF"
+                        Background="{StaticResource ShellSidebarFooterBackgroundBrush}"
                         BorderBrush="{StaticResource ShellPanelBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="12">
@@ -391,7 +391,7 @@
                                 Style="{StaticResource ShellSecondaryButtonStyle}"
                                 Visibility="Collapsed">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECA1;" />
+                                    <fluentIcons:SymbolIcon Symbol="DocumentSearch" />
                                     <TextBlock Text="View Error Logs" />
                                 </StackPanel>
                             </Button>
@@ -445,7 +445,7 @@
                                     Style="{StaticResource ShellSecondaryButtonStyle}"
                                     Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
+                                        <fluentIcons:SymbolIcon Symbol="ArrowUpload" />
                                         <TextBlock Text="Import TT" />
                                     </StackPanel>
                                 </Button>
@@ -456,7 +456,7 @@
                                     Style="{StaticResource ShellSecondaryButtonStyle}"
                                     Visibility="Collapsed">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF064;" />
+                                        <fluentIcons:SymbolIcon Symbol="ArrowClockwise" />
                                         <TextBlock Text="Refresh" />
                                     </StackPanel>
                                 </Button>
@@ -464,13 +464,13 @@
                                 <Border
                                     x:Name="WorkspaceBadgeBorder"
                                     Padding="10,5"
-                                    Background="#33FFFFFF"
-                                    BorderBrush="#55FFFFFF"
+                                    Background="{StaticResource ShellContentBadgeBackgroundBrush}"
+                                    BorderBrush="{StaticResource ShellContentBadgeBorderBrush}"
                                     BorderThickness="1"
                                     CornerRadius="10">
                                     <TextBlock
                                         VerticalAlignment="Center"
-                                        Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
+                                        Foreground="{StaticResource ShellNavForegroundBrush}"
                                         Text="NOC Workspace" />
                                 </Border>
                             </StackPanel>
@@ -503,7 +503,7 @@
             Grid.Row="2"
             Margin="14,0,14,10"
             Padding="12,10"
-            Background="#CCFFFFFF"
+            Background="{StaticResource ShellImportProgressBackgroundBrush}"
             BorderBrush="{StaticResource ShellPanelBorderBrush}"
             BorderThickness="1"
             CornerRadius="10"
@@ -518,7 +518,7 @@
                     <TextBlock
                         x:Name="ImportProgressTextBlock"
                         Foreground="{StaticResource ShellTitleForegroundBrush}"
-                        Text="Import TT berjalan..." />
+                        Text="Background job berjalan..." />
                     <ProgressBar
                         x:Name="ImportProgressBar"
                         Height="8"
@@ -534,8 +534,8 @@
                     Click="CancelImportButton_Click"
                     Style="{StaticResource ShellSecondaryButtonStyle}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEB99;" />
-                        <TextBlock Text="Cancel Import" />
+                        <fluentIcons:SymbolIcon Symbol="DismissCircle" />
+                        <TextBlock Text="Cancel Job" />
                     </StackPanel>
                 </Button>
             </Grid>

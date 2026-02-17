@@ -121,18 +121,18 @@ namespace NOCREPORTGENERATOR
                 var titleBar = appWindow.TitleBar;
 
                 titleBar.BackgroundColor = Colors.Transparent;
-                titleBar.ForegroundColor = ColorHelper.FromArgb(255, 18, 49, 74);
+                titleBar.ForegroundColor = ColorHelper.FromArgb(255, 15, 36, 56);
                 titleBar.InactiveBackgroundColor = Colors.Transparent;
-                titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 108, 130, 155);
+                titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 124, 139, 156);
 
                 titleBar.ButtonBackgroundColor = Colors.Transparent;
-                titleBar.ButtonForegroundColor = ColorHelper.FromArgb(255, 18, 49, 74);
-                titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(90, 47, 129, 199);
-                titleBar.ButtonHoverForegroundColor = ColorHelper.FromArgb(255, 15, 45, 69);
-                titleBar.ButtonPressedBackgroundColor = ColorHelper.FromArgb(130, 42, 132, 207);
+                titleBar.ButtonForegroundColor = ColorHelper.FromArgb(255, 15, 36, 56);
+                titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(95, 219, 233, 246);
+                titleBar.ButtonHoverForegroundColor = ColorHelper.FromArgb(255, 11, 30, 47);
+                titleBar.ButtonPressedBackgroundColor = ColorHelper.FromArgb(145, 187, 216, 241);
                 titleBar.ButtonPressedForegroundColor = Colors.White;
                 titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 108, 130, 155);
+                titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 124, 139, 156);
             }
             catch (Exception ex)
             {
@@ -466,7 +466,7 @@ namespace NOCREPORTGENERATOR
         private void CancelImportButton_Click(object sender, RoutedEventArgs e)
         {
             CancelImportButton.IsEnabled = false;
-            ImportProgressTextBlock.Text = "Membatalkan import...";
+            ImportProgressTextBlock.Text = "Membatalkan proses...";
             ImportJobService.Cancel();
         }
 

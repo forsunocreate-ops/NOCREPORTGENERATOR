@@ -16,7 +16,7 @@
     </Page.Transitions>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid x:Name="DashboardRootGrid" Padding="16" RowSpacing="12">
+        <Grid x:Name="DashboardRootGrid" Padding="20" RowSpacing="16">
             <Grid.ChildrenTransitions>
                 <TransitionCollection>
                     <EntranceThemeTransition FromVerticalOffset="16" IsStaggeringEnabled="True" />
@@ -36,13 +36,13 @@
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-                <Grid ColumnSpacing="10">
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Spacing="4">
+                    <StackPanel Spacing="6">
                         <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Advanced NOC Console" />
                         <TextBlock
                             Style="{StaticResource ShellHeroTitleTextStyle}"
@@ -57,8 +57,8 @@
                         Grid.Column="1"
                         Width="66"
                         Height="66"
-                        Background="#34FFFFFF"
-                        BorderBrush="#55FFFFFF"
+                        Background="{StaticResource ShellWorkspaceBadgeBackgroundBrush}"
+                        BorderBrush="{StaticResource ShellWorkspaceBadgeBorderBrush}"
                         BorderThickness="1"
                         CornerRadius="33" />
                 </Grid>
@@ -66,7 +66,7 @@
 
             <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="10" RowSpacing="10" MinWidth="1280">
+                    <Grid ColumnSpacing="12" RowSpacing="12" MinWidth="1280">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
@@ -186,7 +186,7 @@
 
             <Border Grid.Row="2" Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="10" MinWidth="980">
+                    <Grid ColumnSpacing="12" MinWidth="980">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="*" />
@@ -195,7 +195,7 @@
                         <StackPanel Grid.Column="0" Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Trend Volume TT (7 Hari)" />
                             <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Pergerakan volume harian + baseline untuk monitoring lonjakan." />
-                            <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="250"
                                     LegendPosition="Top"
@@ -208,7 +208,7 @@
                         <StackPanel Grid.Column="1" Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Status Mix" />
                             <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Distribusi Open / Closed / Cancel." />
-                            <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                 <lvc:PieChart
                                     Height="250"
                                     LegendPosition="Bottom"
@@ -221,7 +221,7 @@
 
             <Border Grid.Row="3" Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="10" MinWidth="980">
+                    <Grid ColumnSpacing="12" MinWidth="980">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="2*" />
@@ -230,7 +230,7 @@
                         <StackPanel Grid.Column="0" Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="SLA Risk" />
                             <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="On-track, at-risk, dan breached untuk ticket Open." />
-                            <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                 <lvc:PieChart
                                     Height="250"
                                     LegendPosition="Bottom"
@@ -241,7 +241,7 @@
                         <StackPanel Grid.Column="1" Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Workload PIC (Top 8)" />
                             <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Jumlah TT Open per PIC untuk distribusi beban kerja." />
-                            <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="250"
                                     LegendPosition="Hidden"
@@ -256,7 +256,7 @@
 
             <Border Grid.Row="4" Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="10" MinWidth="1280">
+                    <Grid ColumnSpacing="12" MinWidth="1280">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="*" />
@@ -266,7 +266,7 @@
                         <StackPanel Grid.Column="0" Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Root Cause Intelligence (Top 8)" />
                             <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Kontributor masalah terbesar untuk analisis Pareto." />
-                            <Border Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="240"
                                     LegendPosition="Hidden"
@@ -282,7 +282,7 @@
                             <ListView x:Name="TopSegmentListView" MinHeight="250">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,8" Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                             <Grid ColumnSpacing="8">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
@@ -303,7 +303,7 @@
                             <ListView x:Name="PriorityQueueListView" MinHeight="250">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,8" Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                                             <StackPanel Spacing="2">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding Ticket}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="{Binding Segment}" TextTrimming="CharacterEllipsis" />
@@ -319,13 +319,13 @@
             </Border>
 
             <Border Grid.Row="5" Style="{StaticResource ShellGlassCardStyle}">
-                <Grid ColumnSpacing="10">
+                <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                    <Border Grid.Column="0" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                         <StackPanel Spacing="6">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Data Quality" />
                             <TextBlock x:Name="MissingSystemKeyTextBlock" Text="Missing System Key: 0 (0%)" />
@@ -334,7 +334,7 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="1" Padding="10" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                    <Border Grid.Column="1" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
                         <StackPanel Spacing="8">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Import Pipeline Monitor" />
                             <TextBlock x:Name="ImportStateTextBlock" Text="Idle" />
@@ -346,7 +346,7 @@
 
             <Border Grid.Row="6" Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="10" RowSpacing="10" MinWidth="920">
+                    <Grid ColumnSpacing="12" RowSpacing="12" MinWidth="920">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="2*" />
                             <ColumnDefinition Width="Auto" />
@@ -409,6 +409,7 @@
                             Grid.Row="1"
                             Click="OpenInCreateTtButton_Click"
                             IsEnabled="False"
+                            Visibility="Collapsed"
                             Style="{StaticResource ShellPrimaryButtonStyle}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEC80;" />
@@ -419,7 +420,11 @@
                 </ScrollViewer>
             </Border>
 
-            <Border Grid.Row="7" Style="{StaticResource ShellGlassCardStyle}">
+            <Border
+                x:Name="DashboardHistorySectionBorder"
+                Grid.Row="7"
+                Visibility="Collapsed"
+                Style="{StaticResource ShellGlassCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" MinWidth="1120">
                         <Grid.ColumnDefinitions>
@@ -441,7 +446,7 @@
                                     <DataTemplate>
                                         <Border
                                             Margin="0,0,0,8"
-                                            Padding="10"
+                                            Padding="12"
                                             Style="{StaticResource ShellGlassSubtleCardStyle}">
                                             <StackPanel Spacing="4">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding HeaderText}" TextTrimming="CharacterEllipsis" />

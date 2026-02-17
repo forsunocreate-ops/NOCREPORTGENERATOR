@@ -15,7 +15,7 @@
     </Page.Transitions>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid x:Name="LiveMapRootGrid" Padding="16" RowSpacing="12">
+        <Grid x:Name="LiveMapRootGrid" Padding="20" RowSpacing="16">
         <Grid.ChildrenTransitions>
             <TransitionCollection>
                 <EntranceThemeTransition FromVerticalOffset="18" IsStaggeringEnabled="True" />
@@ -30,7 +30,7 @@
                         <AdaptiveTrigger MinWindowWidth="980" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="LiveMapRootGrid.Padding" Value="16" />
+                        <Setter Target="LiveMapRootGrid.Padding" Value="20" />
                         <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
                         <Setter Target="MapToolbarSecondColumn.Width" Value="Auto" />
                         <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
@@ -44,7 +44,7 @@
                         <AdaptiveTrigger MinWindowWidth="0" />
                     </VisualState.StateTriggers>
                     <VisualState.Setters>
-                        <Setter Target="LiveMapRootGrid.Padding" Value="10" />
+                        <Setter Target="LiveMapRootGrid.Padding" Value="12" />
                         <Setter Target="MapToolbarFirstColumn.Width" Value="*" />
                         <Setter Target="MapToolbarSecondColumn.Width" Value="0" />
                         <Setter Target="MapSearchBox.(Grid.Column)" Value="0" />
@@ -63,7 +63,7 @@
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-            <StackPanel Spacing="4">
+            <StackPanel Spacing="6">
                 <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Geo Monitoring" />
                 <TextBlock
                     Style="{StaticResource ShellHeroTitleTextStyle}"
@@ -74,245 +74,466 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
-            <Grid ColumnSpacing="10" RowSpacing="10">
+        <Border
+            x:Name="LegacyFilterSectionBorder"
+            Grid.Row="1"
+            Padding="12"
+            Visibility="Collapsed"
+            Style="{StaticResource ShellGlassCardStyle}">
+            <Grid ColumnSpacing="8" RowSpacing="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition x:Name="MapToolbarFirstColumn" Width="*" />
-                    <ColumnDefinition x:Name="MapToolbarSecondColumn" Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <AutoSuggestBox
-                    x:Name="MapSearchBox"
-                    PlaceholderText="Cari lokasi / koordinat..."
-                    QueryIcon="Find"
-                    QuerySubmitted="MapSearchBox_QuerySubmitted"
-                    Style="{StaticResource ShellInputAutoSuggestBoxStyle}" />
-
-                <StackPanel
-                    x:Name="MapActionPanel"
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="8">
-                    <Button
-                        x:Name="MapCenterButton"
-                        Click="MapCenterButton_Click"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF0A;" />
-                            <TextBlock Text="Center to Indonesia" />
-                        </StackPanel>
-                    </Button>
-                </StackPanel>
-
-                <ScrollViewer
-                    Grid.Row="1"
-                    Grid.ColumnSpan="2"
-                    HorizontalScrollBarVisibility="Auto"
-                    VerticalScrollBarVisibility="Disabled">
-                    <Grid
-                        ColumnSpacing="8"
-                        MinWidth="1320">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="170" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="170" />
-                        <ColumnDefinition Width="150" />
-                        <ColumnDefinition Width="150" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <TextBlock
-                        Grid.Column="0"
-                        VerticalAlignment="Center"
-                        Text="From" />
-                    <CalendarDatePicker
-                        x:Name="FromDatePicker"
-                        Grid.Column="1"
-                        PlaceholderText="Pilih tanggal"
-                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
-                        VerticalAlignment="Center"
-                        DateChanged="FromDatePicker_DateChanged" />
-
-                    <TextBlock
-                        Grid.Column="2"
-                        VerticalAlignment="Center"
-                        Text="To" />
-                    <CalendarDatePicker
-                        x:Name="ToDatePicker"
-                        Grid.Column="3"
-                        PlaceholderText="Pilih tanggal"
-                        Style="{StaticResource ShellInputCalendarDatePickerStyle}"
-                        VerticalAlignment="Center"
-                        DateChanged="ToDatePicker_DateChanged" />
-
-                    <ComboBox
-                        x:Name="StatusFilterComboBox"
-                        Grid.Column="4"
-                        PlaceholderText="Status"
-                        Style="{StaticResource ShellInputComboBoxStyle}"
-                        VerticalAlignment="Center"
-                        SelectionChanged="StatusFilterComboBox_SelectionChanged" />
-
-                    <ComboBox
-                        x:Name="SeverityFilterComboBox"
-                        Grid.Column="5"
-                        PlaceholderText="Severity"
-                        Style="{StaticResource ShellInputComboBoxStyle}"
-                        VerticalAlignment="Center"
-                        SelectionChanged="SeverityFilterComboBox_SelectionChanged" />
-
-                    <StackPanel
-                        Grid.Column="6"
-                        Orientation="Horizontal"
-                        Spacing="8"
-                        VerticalAlignment="Center">
-                        <TextBlock VerticalAlignment="Center" Text="Heatmap" />
-                        <ToggleSwitch
-                            x:Name="HeatmapToggleSwitch"
-                            Toggled="HeatmapToggleSwitch_Toggled" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="7"
-                        Orientation="Horizontal"
-                        Spacing="8"
-                        VerticalAlignment="Center">
-                        <TextBlock VerticalAlignment="Center" Text="Site Marker" />
-                        <ToggleSwitch
-                            x:Name="SiteMarkersToggleSwitch"
-                            Toggled="SiteMarkersToggleSwitch_Toggled" />
-                    </StackPanel>
-
-                    <StackPanel
-                        Grid.Column="8"
-                        Orientation="Horizontal"
-                        Spacing="8"
-                        VerticalAlignment="Center">
-                        <TextBlock VerticalAlignment="Center" Text="Site Line" />
-                        <ToggleSwitch
-                            x:Name="SiteLinesToggleSwitch"
-                            Toggled="SiteLinesToggleSwitch_Toggled" />
-                    </StackPanel>
-
-                    <Button
-                        x:Name="ImportSegmentPmButton"
-                        Grid.Column="9"
-                        Click="ImportSegmentPmButton_Click"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
-                            <TextBlock Text="Import SegmentPM" />
-                        </StackPanel>
-                    </Button>
-
-                    <Button
-                        x:Name="ExportCsvButton"
-                        Grid.Column="10"
-                        Click="ExportCsvButton_Click"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource ShellSecondaryButtonStyle}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECD9;" />
-                            <TextBlock Text="Export CSV" />
-                        </StackPanel>
-                    </Button>
-                    </Grid>
-                </ScrollViewer>
 
                 <Expander
-                    Grid.Row="2"
-                    Grid.ColumnSpan="2"
-                    Header="Advanced Smart Filter"
+                    x:Name="FilterSectionExpander"
+                    Grid.Row="0"
                     IsExpanded="True">
-                    <ScrollViewer
-                        Margin="0,8,0,0"
-                        HorizontalScrollBarVisibility="Auto"
-                        VerticalScrollBarVisibility="Disabled">
-                        <Grid
-                            ColumnSpacing="8"
-                            MinWidth="940">
+                    <Expander.Header>
+                        <Grid ColumnSpacing="10">
                             <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="220" />
-                            <ColumnDefinition Width="180" />
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Style="{StaticResource ShellSectionCaptionStyle}"
+                                Text="Filter Section" />
+                            <CheckBox
+                                x:Name="CompactFilterModeCheckBox"
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Checked="CompactFilterModeCheckBox_Checked"
+                                Content="Compact Mode"
+                                Unchecked="CompactFilterModeCheckBox_Checked" />
+                        </Grid>
+                    </Expander.Header>
+
+                    <StackPanel Margin="0,4,0,0" Spacing="6">
+                        <Grid ColumnSpacing="8" RowSpacing="6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition x:Name="MapToolbarFirstColumn" Width="*" />
+                                <ColumnDefinition x:Name="MapToolbarSecondColumn" Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                        <AutoSuggestBox
-                            x:Name="SmartFilterAutoSuggestBox"
-                            Grid.Column="0"
-                            PlaceholderText="Smart filter: tt:INC-..., seg:jakarta, cp:otdr, from:2026-02-01 to:2026-02-13"
-                            Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
-                            QuerySubmitted="SmartFilterAutoSuggestBox_QuerySubmitted"
-                            SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
-                            TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
+                            <AutoSuggestBox
+                                x:Name="MapSearchBox"
+                                PlaceholderText="Cari lokasi / koordinat..."
+                                QueryIcon="Find"
+                                QuerySubmitted="MapSearchBox_QuerySubmitted"
+                                Style="{StaticResource ShellInputAutoSuggestBoxStyle}" />
 
-                        <ComboBox
-                            x:Name="SegmentRouteFilterComboBox"
-                            Grid.Column="1"
-                            IsEditable="True"
-                            IsTextSearchEnabled="True"
-                            PlaceholderText="Segment Route"
-                            Style="{StaticResource ShellInputComboBoxStyle}"
-                            SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
-
-                        <ComboBox
-                            x:Name="QuickFilterComboBox"
-                            Grid.Column="2"
-                            Style="{StaticResource ShellInputComboBoxStyle}"
-                            SelectionChanged="QuickFilterComboBox_SelectionChanged" />
-
-                        <Button
-                            x:Name="ApplyFilterButton"
-                            Grid.Column="3"
-                            Click="ApplyFilterButton_Click"
-                            Style="{StaticResource ShellSecondaryButtonStyle}">
-                            <TextBlock Text="Apply Filter" />
-                        </Button>
-
-                        <Button
-                            x:Name="ClearFilterButton"
-                            Grid.Column="4"
-                            Click="ClearFilterButton_Click"
-                            Style="{StaticResource ShellSecondaryButtonStyle}">
-                            <TextBlock Text="Clear" />
-                        </Button>
+                            <StackPanel
+                                x:Name="MapActionPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6">
+                                <Button
+                                    x:Name="MapCenterButton"
+                                    Click="MapCenterButton_Click"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEF0A;" />
+                                        <TextBlock Text="Center to Indonesia" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
                         </Grid>
-                    </ScrollViewer>
+
+                        <Grid
+                            x:Name="PrimaryFilterRootGrid"
+                            RowSpacing="6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Grid
+                                x:Name="PrimaryTopFilterGrid"
+                                ColumnSpacing="8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition x:Name="PrimaryFromDateColumn" Width="150" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition x:Name="PrimaryToDateColumn" Width="150" />
+                                    <ColumnDefinition x:Name="PrimaryStatusColumn" Width="130" />
+                                    <ColumnDefinition x:Name="PrimarySeverityColumn" Width="130" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock
+                                    x:Name="FromLabelTextBlock"
+                                    Grid.Column="0"
+                                    VerticalAlignment="Center"
+                                    Text="From" />
+                                <CalendarDatePicker
+                                    x:Name="FromDatePicker"
+                                    Grid.Column="1"
+                                    PlaceholderText="Pilih tanggal"
+                                    Style="{StaticResource ShellInputCalendarDatePickerStyle}"
+                                    VerticalAlignment="Center"
+                                    DateChanged="FromDatePicker_DateChanged" />
+
+                                <TextBlock
+                                    x:Name="ToLabelTextBlock"
+                                    Grid.Column="2"
+                                    VerticalAlignment="Center"
+                                    Text="To" />
+                                <CalendarDatePicker
+                                    x:Name="ToDatePicker"
+                                    Grid.Column="3"
+                                    PlaceholderText="Pilih tanggal"
+                                    Style="{StaticResource ShellInputCalendarDatePickerStyle}"
+                                    VerticalAlignment="Center"
+                                    DateChanged="ToDatePicker_DateChanged" />
+
+                                <ComboBox
+                                    x:Name="StatusFilterComboBox"
+                                    Grid.Column="4"
+                                    PlaceholderText="Status"
+                                    Style="{StaticResource ShellInputComboBoxStyle}"
+                                    VerticalAlignment="Center"
+                                    SelectionChanged="StatusFilterComboBox_SelectionChanged" />
+
+                                <ComboBox
+                                    x:Name="SeverityFilterComboBox"
+                                    Grid.Column="5"
+                                    PlaceholderText="Severity"
+                                    Style="{StaticResource ShellInputComboBoxStyle}"
+                                    VerticalAlignment="Center"
+                                    SelectionChanged="SeverityFilterComboBox_SelectionChanged" />
+
+                                <Button
+                                    x:Name="ImportSegmentPmButton"
+                                    Grid.Column="6"
+                                    Click="ImportSegmentPmButton_Click"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xF24A;" />
+                                        <TextBlock x:Name="ImportSegmentPmTextBlock" Text="Import SegmentPM" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button
+                                    x:Name="ExportCsvButton"
+                                    Grid.Column="7"
+                                    Click="ExportCsvButton_Click"
+                                    VerticalAlignment="Center"
+                                    Style="{StaticResource ShellSecondaryButtonStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xECD9;" />
+                                        <TextBlock x:Name="ExportCsvTextBlock" Text="Export CSV" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <Grid
+                                x:Name="PrimaryToggleGrid"
+                                Grid.Row="1"
+                                ColumnSpacing="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel
+                                    Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        x:Name="HeatmapLabelTextBlock"
+                                        VerticalAlignment="Center"
+                                        Text="Heatmap" />
+                                    <ToggleSwitch
+                                        x:Name="HeatmapToggleSwitch"
+                                        Toggled="HeatmapToggleSwitch_Toggled" />
+                                </StackPanel>
+
+                                <StackPanel
+                                    Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        x:Name="SiteMarkerLabelTextBlock"
+                                        VerticalAlignment="Center"
+                                        Text="Site Marker" />
+                                    <ToggleSwitch
+                                        x:Name="SiteMarkersToggleSwitch"
+                                        Toggled="SiteMarkersToggleSwitch_Toggled" />
+                                </StackPanel>
+
+                                <StackPanel
+                                    Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        x:Name="SiteLineLabelTextBlock"
+                                        VerticalAlignment="Center"
+                                        Text="Site Line" />
+                                    <ToggleSwitch
+                                        x:Name="SiteLinesToggleSwitch"
+                                        Toggled="SiteLinesToggleSwitch_Toggled" />
+                                </StackPanel>
+
+                                <StackPanel
+                                    Grid.Column="3"
+                                    Orientation="Horizontal"
+                                    Spacing="4"
+                                    VerticalAlignment="Center">
+                                    <TextBlock
+                                        x:Name="RoadRouteLabelTextBlock"
+                                        VerticalAlignment="Center"
+                                        Text="Road Route" />
+                                    <ToggleSwitch
+                                        x:Name="RoadRouteToggleSwitch"
+                                        Toggled="RoadRouteToggleSwitch_Toggled" />
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <Expander
+                            x:Name="AdvancedSmartFilterExpander"
+                            Header="Advanced Smart Filter"
+                            IsExpanded="True">
+                            <ScrollViewer
+                                Margin="0,4,0,0"
+                                HorizontalScrollBarVisibility="Disabled"
+                                VerticalScrollBarVisibility="Disabled">
+                                <Grid
+                                    ColumnSpacing="8"
+                                    MinWidth="0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="190" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <AutoSuggestBox
+                                        x:Name="SmartFilterAutoSuggestBox"
+                                        Grid.Column="0"
+                                        PlaceholderText="Smart filter: tt:INC-..., seg:jakarta, cp:otdr, from:2026-02-01 to:2026-02-13"
+                                        Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                                        QuerySubmitted="SmartFilterAutoSuggestBox_QuerySubmitted"
+                                        SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
+                                        TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
+
+                                    <ComboBox
+                                        x:Name="SegmentRouteFilterComboBox"
+                                        Grid.Column="1"
+                                        IsEditable="True"
+                                        IsTextSearchEnabled="True"
+                                        PlaceholderText="Segment Route"
+                                        Style="{StaticResource ShellInputComboBoxStyle}"
+                                        SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
+
+                                    <ComboBox
+                                        x:Name="SegmentPmFilterComboBox"
+                                        Grid.Column="2"
+                                        IsEditable="True"
+                                        IsTextSearchEnabled="True"
+                                        PlaceholderText="Segment PM"
+                                        Style="{StaticResource ShellInputComboBoxStyle}"
+                                        SelectionChanged="SegmentPmFilterComboBox_SelectionChanged" />
+
+                                    <ComboBox
+                                        x:Name="QuickFilterComboBox"
+                                        Grid.Column="3"
+                                        Style="{StaticResource ShellInputComboBoxStyle}"
+                                        SelectionChanged="QuickFilterComboBox_SelectionChanged" />
+
+                                    <Button
+                                        x:Name="ApplyFilterButton"
+                                        Grid.Column="4"
+                                        Click="ApplyFilterButton_Click"
+                                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                                        <TextBlock Text="Apply Filter" />
+                                    </Button>
+
+                                    <Button
+                                        x:Name="ClearFilterButton"
+                                        Grid.Column="5"
+                                        Click="ClearFilterButton_Click"
+                                        Style="{StaticResource ShellSecondaryButtonStyle}">
+                                        <TextBlock Text="Clear" />
+                                    </Button>
+                                </Grid>
+                            </ScrollViewer>
+                        </Expander>
+                    </StackPanel>
                 </Expander>
 
                 <TextBlock
-                    x:Name="MapFilterSummaryTextBlock"
-                    Grid.Row="4"
-                    Grid.ColumnSpan="2"
+                    x:Name="LegacyMapFilterSummaryTextBlock"
+                    Grid.Row="1"
                     Style="{StaticResource ShellSectionCaptionStyle}"
                     Text="0 marker tampil" />
+
+                <Border
+                    x:Name="LegacyMapRenderProgressBorder"
+                    Grid.Row="2"
+                    Margin="0,6,0,0"
+                    Padding="12,10"
+                    Background="{StaticResource ShellImportProgressBackgroundBrush}"
+                    BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="4">
+                        <TextBlock
+                            x:Name="LegacyMapRenderProgressTextBlock"
+                            Foreground="{StaticResource ShellTitleForegroundBrush}"
+                            Text="Memproses data Live Map..." />
+                        <ProgressBar
+                            x:Name="LegacyMapRenderProgressBar"
+                            Height="8"
+                            IsIndeterminate="True"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="0" />
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 
         <Border
             Grid.Row="2"
-            Padding="8"
+            Padding="10"
             Style="{StaticResource ShellGlassCardStyle}">
-            <Border
-                Padding="6"
-                Style="{StaticResource ShellGlassSubtleCardStyle}">
-                <WebView2 x:Name="MapWebView" />
-            </Border>
+            <Grid
+                x:Name="MapSurfaceGrid"
+                PointerMoved="MapSurface_PointerActivity"
+                PointerPressed="MapSurface_PointerActivity"
+                PointerWheelChanged="MapSurface_PointerActivity">
+                <Border
+                    Padding="8"
+                    Style="{StaticResource ShellGlassSubtleCardStyle}">
+                    <WebView2
+                        x:Name="MapWebView"
+                        PointerMoved="MapSurface_PointerActivity"
+                        PointerPressed="MapSurface_PointerActivity"
+                        PointerWheelChanged="MapSurface_PointerActivity" />
+                </Border>
+
+                <Border
+                    x:Name="MapOverlaySearchBorder"
+                    Margin="16,14,16,0"
+                    Padding="10"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="#B8FFFFFF"
+                    BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Opacity="0.86"
+                    PointerEntered="MapOverlaySearchBorder_PointerActivity"
+                    PointerMoved="MapOverlaySearchBorder_PointerActivity"
+                    PointerPressed="MapOverlaySearchBorder_PointerActivity">
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <AutoSuggestBox
+                            x:Name="OverlaySmartFilterAutoSuggestBox"
+                            Grid.Column="0"
+                            PlaceholderText="Smart filter: tt:INC..., seg:..., spm:..., cp:..., from:YYYY-MM-DD to:YYYY-MM-DD"
+                            QueryIcon="Find"
+                            QuerySubmitted="OverlaySmartFilterAutoSuggestBox_QuerySubmitted"
+                            Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                            SuggestionChosen="OverlaySmartFilterAutoSuggestBox_SuggestionChosen"
+                            TextChanged="OverlaySmartFilterAutoSuggestBox_TextChanged"
+                            GotFocus="OverlaySmartFilterAutoSuggestBox_GotFocus"
+                            LostFocus="OverlaySmartFilterAutoSuggestBox_LostFocus" />
+
+                        <Button
+                            Grid.Column="1"
+                            Click="MapCenterButton_Click"
+                            Style="{StaticResource ShellSecondaryButtonStyle}">
+                            <TextBlock Text="Center" />
+                        </Button>
+
+                        <Button
+                            Grid.Column="2"
+                            Click="ClearFilterButton_Click"
+                            Style="{StaticResource ShellSecondaryButtonStyle}">
+                            <TextBlock Text="Clear" />
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <Button
+                    x:Name="MapOverlayRevealButton"
+                    Margin="0,14,16,0"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Click="MapOverlayRevealButton_Click"
+                    Style="{StaticResource ShellSecondaryButtonStyle}"
+                    Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <FontIcon FontFamily="{StaticResource RemixIconFontFamily}" Glyph="&#xEE4D;" />
+                        <TextBlock Text="Search" />
+                    </StackPanel>
+                </Button>
+
+                <Border
+                    x:Name="MapRenderProgressBorder"
+                    Margin="16,64,16,0"
+                    Padding="10,8"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource ShellImportProgressBackgroundBrush}"
+                    BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Visibility="Collapsed">
+                    <StackPanel Spacing="4">
+                        <TextBlock
+                            x:Name="MapRenderProgressTextBlock"
+                            Foreground="{StaticResource ShellTitleForegroundBrush}"
+                            Text="Memproses data Live Map..." />
+                        <ProgressBar
+                            x:Name="MapRenderProgressBar"
+                            Height="8"
+                            IsIndeterminate="True"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="0" />
+                    </StackPanel>
+                </Border>
+
+                <Border
+                    Margin="16,0,16,12"
+                    Padding="10,6"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Bottom"
+                    Background="#ECFFFFFF"
+                    BorderBrush="{StaticResource ShellPanelBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                    <TextBlock
+                        x:Name="MapFilterSummaryTextBlock"
+                        Style="{StaticResource ShellSectionCaptionStyle}"
+                        Text="0 marker tampil" />
+                </Border>
+            </Grid>
         </Border>
         </Grid>
     </ScrollViewer>

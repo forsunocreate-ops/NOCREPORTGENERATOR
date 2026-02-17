@@ -13,15 +13,44 @@
         </TransitionCollection>
     </Page.Transitions>
 
-    <ScrollViewer>
-        <Grid Padding="16" RowSpacing="12">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <Grid x:Name="SettingsRootGrid" Padding="20" RowSpacing="16">
+            <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup>
+                    <VisualState x:Name="SettingsWideState">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="1080" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="SettingsRootGrid.Padding" Value="20" />
+                            <Setter Target="SettingsSecondColumn.Width" Value="*" />
+                            <Setter Target="DataSyncCard.(Grid.Row)" Value="0" />
+                            <Setter Target="DataSyncCard.(Grid.Column)" Value="1" />
+                            <Setter Target="DataSyncCard.(Grid.ColumnSpan)" Value="1" />
+                        </VisualState.Setters>
+                    </VisualState>
+                    <VisualState x:Name="SettingsCompactState">
+                        <VisualState.StateTriggers>
+                            <AdaptiveTrigger MinWindowWidth="0" />
+                        </VisualState.StateTriggers>
+                        <VisualState.Setters>
+                            <Setter Target="SettingsRootGrid.Padding" Value="12" />
+                            <Setter Target="SettingsSecondColumn.Width" Value="0" />
+                            <Setter Target="DataSyncCard.(Grid.Row)" Value="1" />
+                            <Setter Target="DataSyncCard.(Grid.Column)" Value="0" />
+                            <Setter Target="DataSyncCard.(Grid.ColumnSpan)" Value="2" />
+                        </VisualState.Setters>
+                    </VisualState>
+                </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-                <StackPanel Spacing="4">
+                <StackPanel Spacing="6">
                     <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Configuration" />
                     <TextBlock
                         Style="{StaticResource ShellHeroTitleTextStyle}"
@@ -33,9 +62,22 @@
             </Border>
 
             <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
-                <StackPanel Spacing="12">
-                    <Border Style="{StaticResource ShellGlassSubtleCardStyle}">
-                        <StackPanel Spacing="8">
+                <Grid x:Name="SettingsCardsGrid" ColumnSpacing="14" RowSpacing="14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition x:Name="SettingsSecondColumn" Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <Border
+                        x:Name="GeminiSettingsCard"
+                        Grid.Row="0"
+                        Grid.Column="0"
+                        Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="10">
                             <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Gemini API" />
                             <TextBlock
                                 Foreground="{StaticResource ShellMutedForegroundBrush}"
@@ -60,7 +102,32 @@
                                 Text="-" />
                         </StackPanel>
                     </Border>
-                </StackPanel>
+
+                    <Border
+                        x:Name="DataSyncCard"
+                        Grid.Row="0"
+                        Grid.Column="1"
+                        Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <StackPanel Spacing="10">
+                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Data Synchronize" />
+                            <TextBlock
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Sinkronkan 3 sumber data: DATABASE_LINK.xlsb, SEGMENTPM.xlsx, dan DATABASE_TT.xlsx." />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Button
+                                    x:Name="SynchronizeButton"
+                                    Click="SynchronizeButton_Click"
+                                    Style="{StaticResource ShellPrimaryButtonStyle}">
+                                    <TextBlock Text="Synchronize Now" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock
+                                x:Name="SyncStatusTextBlock"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Belum dijalankan." />
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
     </ScrollViewer>

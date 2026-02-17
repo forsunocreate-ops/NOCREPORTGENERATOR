@@ -31,6 +31,8 @@ namespace NOCREPORTGENERATOR.Pages
         private CancellationTokenSource? _systemKeyLookupCts;
         private CancellationTokenSource? _coordinateImageParseCts;
         private CancellationTokenSource? _updateProgressTranslateCts;
+        private CancellationTokenSource? _savedFormsFilterCts;
+        private CancellationTokenSource? _savedFormsSearchDebounceCts;
         private Dictionary<string, IReadOnlyList<string>> _picBySegmentRoute = new(StringComparer.OrdinalIgnoreCase);
         private List<string> _allSegmentRoutes = new();
         private List<string> _allPicOptions = new();
@@ -49,6 +51,9 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isUpdatingTtIohText;
         private bool _statusLinkOptionsLoaded;
         private List<string> _statusLinkOptions = new();
+        private bool _segmentPmOptionsLoaded;
+        private List<string> _segmentPmOptions = new();
+        private Dictionary<string, IReadOnlyList<string>> _segmentPmBySegmentRoute = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<ImpactListItem> _impactListItems = new();
         private const string SavedFormsDateAll = "Semua waktu";
         private const string SavedFormsDateToday = "Hari ini";
@@ -83,6 +88,7 @@ namespace NOCREPORTGENERATOR.Pages
             _ = TryAutoFillSegmentRouteFromSystemKeyAsync();
             _ = EnsureAllPicOptionsLoadedAsync();
             _ = EnsureStatusLinkOptionsLoadedAsync();
+            _ = EnsureSegmentPmOptionsLoadedAsync();
             _ = RefreshSavedFormsAsync();
         }
 
@@ -309,6 +315,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ShowSegmentRoute = source.ShowSegmentRoute,
                 ShowSystemKey = source.ShowSystemKey,
                 SegmentRoute = source.SegmentRoute,
+                SegmentPm = source.SegmentPm,
                 SystemKey = source.SystemKey,
                 Coordinate = source.Coordinate,
                 UpdateProgress = source.UpdateProgress,
@@ -1091,6 +1098,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ShowSegmentRoute = ShowSegmentRouteToggleSwitch.IsOn,
                 ShowSystemKey = ShowSystemKeyToggleSwitch.IsOn,
                 SegmentRoute = GetSelectedSegmentRoute(),
+                SegmentPm = GetSelectedSegmentPm(),
                 SystemKey = SystemKeyTextBox.Text?.Trim() ?? string.Empty,
                 Coordinate = CoordinateTextBox.Text?.Trim() ?? string.Empty,
                 UpdateProgress = UpdateProgressTextBox.Text?.Trim() ?? string.Empty,
@@ -1229,6 +1237,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 SystemKeyTextBox.Text = systemKey;
             }
+            ApplySegmentPmSelection(string.Empty);
 
             UpdateProgressTextBox.Text = string.Empty;
             _impactListItems.Clear();
@@ -1525,6 +1534,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 sender.Text = selected;
                 SyncPicFromSelectedSegment();
+                SyncSegmentPmFromSelectedSegment();
                 UpdateTemplatePreview();
                 MarkActiveTabDirty();
             }
@@ -1549,6 +1559,7 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             SyncPicFromSelectedSegment();
+            SyncSegmentPmFromSelectedSegment();
             UpdateTemplatePreview();
             MarkActiveTabDirty();
         }
@@ -1827,6 +1838,7 @@ namespace NOCREPORTGENERATOR.Pages
             var rootCause = RootCauseTextBox?.Text?.Trim() ?? string.Empty;
             var cutPoint = CutPointTextBox?.Text?.Trim() ?? string.Empty;
             var segmentRoute = GetSelectedSegmentRoute();
+            var segmentPm = GetSelectedSegmentPm();
             var systemKey = SystemKeyTextBox?.Text?.Trim() ?? string.Empty;
             var coordinate = CoordinateTextBox?.Text?.Trim() ?? string.Empty;
             var updateProgress = UpdateProgressTextBox?.Text?.Trim() ?? string.Empty;
@@ -1848,6 +1860,7 @@ namespace NOCREPORTGENERATOR.Pages
                 "Rootcause = " + rootCause + Environment.NewLine +
                 "Cut Point = " + cutPoint + Environment.NewLine +
                 (!showSegmentRoute || string.IsNullOrWhiteSpace(segmentRoute) ? string.Empty : "Segment Route = " + segmentRoute + Environment.NewLine) +
+                (string.IsNullOrWhiteSpace(segmentPm) ? string.Empty : "Segment PM = " + segmentPm + Environment.NewLine) +
                 (!showSystemKey || string.IsNullOrWhiteSpace(systemKey) ? string.Empty : "System Key = " + systemKey + Environment.NewLine) +
                 (string.IsNullOrWhiteSpace(coordinate) ? string.Empty : "Coordinate = " + coordinate + Environment.NewLine) +
                 "Update Progress" + Environment.NewLine +
@@ -1944,7 +1957,12 @@ namespace NOCREPORTGENERATOR.Pages
 
             try
             {
-                await Task.Delay(300, token);
+                await Task.Delay(300);
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
+
                 var systemKeyInput = SystemKeyTextBox.Text?.Trim() ?? string.Empty;
                 SetMsgStatus(string.IsNullOrWhiteSpace(systemKeyInput)
                     ? "Memuat semua Segment Route..."
@@ -2009,6 +2027,7 @@ namespace NOCREPORTGENERATOR.Pages
                 }
 
                 SyncPicFromSelectedSegment(keepExistingPic);
+                SyncSegmentPmFromSelectedSegment(keepExistingSegmentPm: true);
                 UpdateTemplatePreview();
                 var picCount = _picBySegmentRoute.TryGetValue(selectedSegment, out var items) ? items.Count : 0;
                 DeveloperDiagnostics.LogInfo("System Key lookup matched " + lookup.Segments.Count + " segment route(s) and " + picCount + " PIC entry.");
@@ -2086,6 +2105,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ShowSegmentRoute = ShowSegmentRouteToggleSwitch.IsOn,
                 ShowSystemKey = ShowSystemKeyToggleSwitch.IsOn,
                 SegmentRoute = GetSelectedSegmentRoute(),
+                SegmentPm = GetSelectedSegmentPm(),
                 SystemKey = SystemKeyTextBox.Text?.Trim() ?? string.Empty,
                 Coordinate = CoordinateTextBox.Text?.Trim() ?? string.Empty,
                 UpdateProgress = UpdateProgressTextBox.Text?.Trim() ?? string.Empty,
@@ -2118,6 +2138,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ShowSystemKeyToggleSwitch.IsOn = state.ShowSystemKey;
                 SegmentRouteAutoSuggestBox.Tag = state.SegmentRoute;
                 SegmentRouteAutoSuggestBox.Text = state.SegmentRoute;
+                ApplySegmentPmSelection(state.SegmentPm);
                 SystemKeyTextBox.Text = state.SystemKey;
                 CoordinateTextBox.Text = state.Coordinate;
                 UpdateProgressTextBox.Text = state.UpdateProgress;
@@ -2505,6 +2526,138 @@ namespace NOCREPORTGENERATOR.Pages
             return text;
         }
 
+        private async Task EnsureSegmentPmOptionsLoadedAsync()
+        {
+            if (_segmentPmOptionsLoaded)
+            {
+                return;
+            }
+
+            try
+            {
+                var options = await SegmentPmMapService.GetSegmentPmOptionsFromWorkbookAsync(password: "no");
+                var map = await SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(password: "no");
+                _segmentPmOptions = options.ToList();
+                _segmentPmBySegmentRoute = map.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
+                SegmentPmComboBox.ItemsSource = _segmentPmOptions;
+                _segmentPmOptionsLoaded = true;
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.EnsureSegmentPmOptionsLoadedAsync", ex);
+                _segmentPmOptions = new List<string>();
+                _segmentPmBySegmentRoute = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+                SegmentPmComboBox.ItemsSource = _segmentPmOptions;
+                _segmentPmOptionsLoaded = true;
+            }
+        }
+
+        private string GetSelectedSegmentPm()
+        {
+            if (SegmentPmComboBox.SelectedItem is string selected &&
+                !string.IsNullOrWhiteSpace(selected))
+            {
+                return selected.Trim();
+            }
+
+            return SegmentPmComboBox.Text?.Trim() ?? string.Empty;
+        }
+
+        private void ApplySegmentPmSelection(string? value)
+        {
+            var text = value?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                SegmentPmComboBox.SelectedItem = null;
+                SegmentPmComboBox.Text = string.Empty;
+                return;
+            }
+
+            if (_segmentPmOptionsLoaded)
+            {
+                if (!_segmentPmOptions.Any(x => string.Equals(x, text, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _segmentPmOptions.Add(text);
+                    _segmentPmOptions = _segmentPmOptions
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                    SegmentPmComboBox.ItemsSource = _segmentPmOptions;
+                }
+
+                var match = _segmentPmOptions.FirstOrDefault(x => string.Equals(x, text, StringComparison.OrdinalIgnoreCase));
+                SegmentPmComboBox.SelectedItem = match;
+            }
+
+            SegmentPmComboBox.Text = text;
+        }
+
+        private void SegmentPmComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isApplyingSavedForm)
+            {
+                return;
+            }
+
+            UpdateTemplatePreview();
+            MarkActiveTabDirty();
+        }
+
+        private void SegmentPmComboBox_TextSubmitted(ComboBox sender, ComboBoxTextSubmittedEventArgs args)
+        {
+            if (_isApplyingSavedForm)
+            {
+                return;
+            }
+
+            var text = sender.Text?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                ApplySegmentPmSelection(text);
+            }
+
+            UpdateTemplatePreview();
+            MarkActiveTabDirty();
+        }
+
+        private void SyncSegmentPmFromSelectedSegment(bool keepExistingSegmentPm = true)
+        {
+            if (!_segmentPmOptionsLoaded)
+            {
+                _ = EnsureSegmentPmOptionsLoadedAsync();
+            }
+
+            var segmentRoute = GetSelectedSegmentRoute();
+            if (string.IsNullOrWhiteSpace(segmentRoute))
+            {
+                if (!keepExistingSegmentPm)
+                {
+                    ApplySegmentPmSelection(string.Empty);
+                }
+                return;
+            }
+
+            if (!_segmentPmBySegmentRoute.TryGetValue(segmentRoute, out var segmentPmCandidates) ||
+                segmentPmCandidates.Count == 0)
+            {
+                if (!keepExistingSegmentPm)
+                {
+                    ApplySegmentPmSelection(string.Empty);
+                }
+                return;
+            }
+
+            var current = GetSelectedSegmentPm();
+            if (keepExistingSegmentPm &&
+                !string.IsNullOrWhiteSpace(current) &&
+                segmentPmCandidates.Any(x => string.Equals(x, current, StringComparison.OrdinalIgnoreCase)))
+            {
+                return;
+            }
+
+            ApplySegmentPmSelection(segmentPmCandidates[0]);
+        }
+
         private async Task RefreshSavedFormsAsync(string? preferredSelectedId = null)
         {
             try
@@ -2512,7 +2665,7 @@ namespace NOCREPORTGENERATOR.Pages
                 var currentSelectedId = (SavedFormsComboBox.SelectedItem as LocalFormRecord)?.Id;
                 var data = await LocalFormStorageService.GetAllAsync();
                 _savedForms = data.Take(MaxSavedFormsInCombo).ToList();
-                ApplySavedFormsFilter();
+                await ApplySavedFormsFilterAsync();
 
                 var targetId = !string.IsNullOrWhiteSpace(preferredSelectedId) ? preferredSelectedId : currentSelectedId;
                 if (!string.IsNullOrWhiteSpace(targetId))
@@ -2566,12 +2719,12 @@ namespace NOCREPORTGENERATOR.Pages
 
         private void SavedFormsSearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            ApplySavedFormsFilter();
+            DebounceApplySavedFormsFilter();
         }
 
         private void SavedFormsFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ApplySavedFormsFilter();
+            _ = ApplySavedFormsFilterAsync();
         }
 
         private void ResetSavedFormsFilterButton_Click(object sender, RoutedEventArgs e)
@@ -2579,17 +2732,135 @@ namespace NOCREPORTGENERATOR.Pages
             SavedFormsSearchTextBox.Text = string.Empty;
             SavedFormsDateFilterComboBox.SelectedItem = SavedFormsDateAll;
             SavedFormsSortComboBox.SelectedItem = SavedFormsSortNewest;
-            ApplySavedFormsFilter();
+            _ = ApplySavedFormsFilterAsync();
         }
 
         private void ApplySavedFormsFilter()
         {
-            var query = SavedFormsSearchTextBox?.Text?.Trim() ?? string.Empty;
-            var dateFilter = SavedFormsDateFilterComboBox?.SelectedItem as string ?? SavedFormsDateAll;
-            var sort = SavedFormsSortComboBox?.SelectedItem as string ?? SavedFormsSortNewest;
+            _ = ApplySavedFormsFilterAsync();
+        }
 
-            IEnumerable<LocalFormRecord> filtered = _savedForms;
+        private void DebounceApplySavedFormsFilter(int delayMs = 180)
+        {
+            _savedFormsSearchDebounceCts?.Cancel();
+            _savedFormsSearchDebounceCts?.Dispose();
+            var cts = new CancellationTokenSource();
+            _savedFormsSearchDebounceCts = cts;
 
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delayMs);
+                    if (cts.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    _ = DispatcherQueue.TryEnqueue(() =>
+                    {
+                        _ = ApplySavedFormsFilterAsync();
+                    });
+                }
+                finally
+                {
+                    if (ReferenceEquals(_savedFormsSearchDebounceCts, cts))
+                    {
+                        cts.Dispose();
+                        _savedFormsSearchDebounceCts = null;
+                    }
+                }
+            });
+        }
+
+        private async Task ApplySavedFormsFilterAsync()
+        {
+            var cts = new CancellationTokenSource();
+            var previous = Interlocked.Exchange(ref _savedFormsFilterCts, cts);
+            if (previous is not null)
+            {
+                try
+                {
+                    previous.Cancel();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    previous.Dispose();
+                }
+            }
+
+            try
+            {
+                var token = cts.Token;
+                var query = SavedFormsSearchTextBox?.Text?.Trim() ?? string.Empty;
+                var dateFilter = SavedFormsDateFilterComboBox?.SelectedItem as string ?? SavedFormsDateAll;
+                var sort = SavedFormsSortComboBox?.SelectedItem as string ?? SavedFormsSortNewest;
+                var selectedId = (SavedFormsComboBox?.SelectedItem as LocalFormRecord)?.Id ?? string.Empty;
+                var savedFormsSnapshot = _savedForms.ToList();
+
+                var prepared = await Task.Run(
+                    () => PrepareSavedFormsFilter(savedFormsSnapshot, query, dateFilter, sort, token));
+
+                if (prepared is null || token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                _filteredSavedForms = prepared.FilteredRecords;
+
+                if (SavedFormsComboBox is not null)
+                {
+                    SavedFormsComboBox.ItemsSource = _filteredSavedForms;
+                    if (!string.IsNullOrWhiteSpace(selectedId))
+                    {
+                        var selected = _filteredSavedForms.FirstOrDefault(x =>
+                            string.Equals(x.Id, selectedId, StringComparison.OrdinalIgnoreCase));
+                        if (selected is not null)
+                        {
+                            SavedFormsComboBox.SelectedItem = selected;
+                        }
+                    }
+                }
+
+                UpdateSavedFormsFilterSummary();
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("CreateTtPage.ApplySavedFormsFilterAsync", ex);
+            }
+            finally
+            {
+                if (ReferenceEquals(_savedFormsFilterCts, cts))
+                {
+                    cts.Dispose();
+                    _savedFormsFilterCts = null;
+                }
+                else
+                {
+                    cts.Dispose();
+                }
+            }
+        }
+
+        private static SavedFormsFilterPreparedData? PrepareSavedFormsFilter(
+            IReadOnlyList<LocalFormRecord> source,
+            string query,
+            string dateFilter,
+            string sort,
+            CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            IEnumerable<LocalFormRecord> filtered = source;
             if (!string.IsNullOrWhiteSpace(query))
             {
                 filtered = filtered.Where(x => MatchDraftQuery(x, query));
@@ -2613,27 +2884,11 @@ namespace NOCREPORTGENERATOR.Pages
                 _ => filtered.OrderByDescending(x => x.SavedAt)
             };
 
-            if (SavedFormsComboBox is null)
+            if (cancellationToken.IsCancellationRequested)
             {
-                _filteredSavedForms = filtered.ToList();
-                UpdateSavedFormsFilterSummary();
-                return;
+                return null;
             }
-
-            var selectedId = (SavedFormsComboBox.SelectedItem as LocalFormRecord)?.Id;
-            _filteredSavedForms = filtered.ToList();
-            SavedFormsComboBox.ItemsSource = _filteredSavedForms;
-
-            if (!string.IsNullOrWhiteSpace(selectedId))
-            {
-                var selected = _filteredSavedForms.FirstOrDefault(x => string.Equals(x.Id, selectedId, StringComparison.OrdinalIgnoreCase));
-                if (selected is not null)
-                {
-                    SavedFormsComboBox.SelectedItem = selected;
-                }
-            }
-
-            UpdateSavedFormsFilterSummary();
+            return new SavedFormsFilterPreparedData(filtered.ToList());
         }
 
         private void UpdateSavedFormsFilterSummary()
@@ -2660,6 +2915,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ContainsIgnoreCase(record.Title, q) ||
                 ContainsIgnoreCase(record.TtIoh, q) ||
                 ContainsIgnoreCase(record.SegmentRoute, q) ||
+                ContainsIgnoreCase(record.SegmentPm, q) ||
                 ContainsIgnoreCase(record.SystemKey, q) ||
                 ContainsIgnoreCase(record.Pic, q) ||
                 ContainsIgnoreCase(record.RootCause, q) ||
@@ -2698,6 +2954,7 @@ namespace NOCREPORTGENERATOR.Pages
                 SystemKeyTextBox.Text = record.SystemKey;
                 SegmentRouteAutoSuggestBox.Tag = record.SegmentRoute;
                 SegmentRouteAutoSuggestBox.Text = record.SegmentRoute;
+                ApplySegmentPmSelection(record.SegmentPm);
                 PicAutoSuggestBox.Text = record.Pic;
                 CoordinateTextBox.Text = record.Coordinate;
                 UpdateProgressTextBox.Text = record.UpdateProgress;
@@ -2789,12 +3046,23 @@ namespace NOCREPORTGENERATOR.Pages
                 !string.IsNullOrWhiteSpace(state.RootCause) ||
                 !string.IsNullOrWhiteSpace(state.CutPoint) ||
                 !string.IsNullOrWhiteSpace(state.SegmentRoute) ||
+                !string.IsNullOrWhiteSpace(state.SegmentPm) ||
                 !string.IsNullOrWhiteSpace(state.SystemKey) ||
                 !string.IsNullOrWhiteSpace(state.Coordinate) ||
                 !string.IsNullOrWhiteSpace(state.UpdateProgress) ||
                 (state.ImpactList?.Any(item => !string.IsNullOrWhiteSpace(item.Impact)) ?? false) ||
                 !state.ShowSegmentRoute ||
                 !state.ShowSystemKey;
+        }
+
+        private sealed class SavedFormsFilterPreparedData
+        {
+            public SavedFormsFilterPreparedData(List<LocalFormRecord> filteredRecords)
+            {
+                FilteredRecords = filteredRecords;
+            }
+
+            public List<LocalFormRecord> FilteredRecords { get; }
         }
 
         private sealed class FormTabState
@@ -2818,6 +3086,7 @@ namespace NOCREPORTGENERATOR.Pages
             public bool ShowSegmentRoute { get; set; }
             public bool ShowSystemKey { get; set; }
             public string SegmentRoute { get; set; } = string.Empty;
+            public string SegmentPm { get; set; } = string.Empty;
             public string SystemKey { get; set; } = string.Empty;
             public string Coordinate { get; set; } = string.Empty;
             public string UpdateProgress { get; set; } = string.Empty;

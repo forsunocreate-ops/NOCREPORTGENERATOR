@@ -5,6 +5,7 @@ using NOCREPORTGENERATOR.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
@@ -42,6 +43,7 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isSubscribed;
         private bool _isInitialized;
         private DateTimeOffset _lastRefreshAt;
+        private DateTimeOffset _lastImportTriggeredRefreshAt = DateTimeOffset.MinValue;
 
         public AdvancedOpsPageController(
             Page hostPage,
@@ -204,7 +206,11 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     _hasPendingRefresh = false;
                     var records = await LocalFormStorageService.GetAllAsync();
-                    var data = AdvancedOpsInsightsService.Build(_pageKind, records, ImportJobService.CurrentState, DateTimeOffset.Now);
+                    var recordsSnapshot = records.ToList();
+                    var importStateSnapshot = ImportJobService.CurrentState;
+                    var nowSnapshot = DateTimeOffset.Now;
+                    var data = await Task.Run(() =>
+                        AdvancedOpsInsightsService.Build(_pageKind, recordsSnapshot, importStateSnapshot, nowSnapshot));
                     _leftItems = data.LeftItems;
                     _rightItems = data.RightItems;
                     _summaryTextBlock.Text = data.Summary;
@@ -312,6 +318,19 @@ namespace NOCREPORTGENERATOR.Pages
             _ = _hostPage.DispatcherQueue.TryEnqueue(() =>
             {
                 _lastUpdatedTextBlock.Text = state.IsActive ? state.Message : _lastUpdatedTextBlock.Text;
+                if (!state.IsActive)
+                {
+                    _ = RefreshAsync();
+                    return;
+                }
+
+                var now = DateTimeOffset.Now;
+                if ((now - _lastImportTriggeredRefreshAt).TotalSeconds < 5)
+                {
+                    return;
+                }
+
+                _lastImportTriggeredRefreshAt = now;
                 _ = RefreshAsync();
             });
         }

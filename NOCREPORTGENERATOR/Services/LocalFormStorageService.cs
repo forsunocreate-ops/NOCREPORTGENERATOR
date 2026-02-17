@@ -50,7 +50,7 @@ namespace NOCREPORTGENERATOR.Services
                     using var command = connection.CreateCommand();
                     command.CommandText =
                         "SELECT id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, finish_date_time, status_link, pic, root_cause, cut_point, " +
-                        "show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json " +
+                        "show_segment_route, show_system_key, segment_route, segment_pm, system_key, coordinate, update_progress, impact_list_json " +
                         "FROM tt_forms ORDER BY saved_at DESC;";
                     using var reader = command.ExecuteReader();
                     while (reader.Read())
@@ -86,7 +86,7 @@ namespace NOCREPORTGENERATOR.Services
                     connection.Open();
                     using var command = connection.CreateCommand();
                     command.CommandText =
-                        "SELECT tt_ioh, title, cut_point, segment_route, dispatch_date_time, coordinate " +
+                        "SELECT tt_ioh, title, cut_point, segment_route, segment_pm, dispatch_date_time, coordinate " +
                         "FROM tt_forms " +
                         "WHERE coordinate IS NOT NULL AND TRIM(coordinate) <> '' " +
                         "ORDER BY dispatch_date_time DESC;";
@@ -99,8 +99,9 @@ namespace NOCREPORTGENERATOR.Services
                             Title = SafeGetString(reader, 1, string.Empty),
                             CutPoint = SafeGetString(reader, 2, string.Empty),
                             SegmentRoute = SafeGetString(reader, 3, string.Empty),
-                            DispatchDateTime = ParseStorageDate(SafeGetString(reader, 4, string.Empty), DateTimeOffset.Now),
-                            Coordinate = SafeGetString(reader, 5, string.Empty)
+                            SegmentPm = SafeGetString(reader, 4, string.Empty),
+                            DispatchDateTime = ParseStorageDate(SafeGetString(reader, 5, string.Empty), DateTimeOffset.Now),
+                            Coordinate = SafeGetString(reader, 6, string.Empty)
                         });
                     }
 
@@ -168,6 +169,116 @@ namespace NOCREPORTGENERATOR.Services
 
             RemoveCacheRecord(recordId.Trim());
             RaiseRecordsChanged();
+        }
+
+        public static async Task<int> SynchronizeSegmentPmByTtIohAsync(IReadOnlyDictionary<string, string> segmentPmByTtIoh)
+        {
+            if (segmentPmByTtIoh is null || segmentPmByTtIoh.Count == 0)
+            {
+                return 0;
+            }
+
+            await EnsureInitializedAsync();
+
+            return await Task.Run(async () =>
+            {
+                await DbGate.WaitAsync();
+                var updatedCount = 0;
+                try
+                {
+                    using var connection = new SqliteConnection(ConnectionString);
+                    connection.Open();
+
+                    var rows = new List<(string Id, string SegmentPm)>();
+                    using (var read = connection.CreateCommand())
+                    {
+                        read.CommandText = "SELECT id, tt_ioh, segment_pm FROM tt_forms;";
+                        using var reader = read.ExecuteReader();
+                        while (reader.Read())
+                        {
+                            var id = SafeGetString(reader, 0, string.Empty);
+                            var ttIoh = NormalizeKey(SafeGetString(reader, 1, string.Empty));
+                            var current = SafeGetString(reader, 2, string.Empty).Trim();
+                            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(ttIoh))
+                            {
+                                continue;
+                            }
+
+                            if (!segmentPmByTtIoh.TryGetValue(ttIoh, out var incoming) || string.IsNullOrWhiteSpace(incoming))
+                            {
+                                continue;
+                            }
+
+                            var normalizedIncoming = incoming.Trim();
+                            if (string.Equals(current, normalizedIncoming, StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            rows.Add((id, normalizedIncoming));
+                        }
+                    }
+
+                    if (rows.Count == 0)
+                    {
+                        return 0;
+                    }
+
+                    using var transaction = connection.BeginTransaction();
+                    using var update = connection.CreateCommand();
+                    update.Transaction = transaction;
+                    update.CommandText = "UPDATE tt_forms SET segment_pm = $segment_pm, saved_at = $saved_at WHERE id = $id;";
+                    var pSegmentPm = update.Parameters.Add("$segment_pm", SqliteType.Text);
+                    var pSavedAt = update.Parameters.Add("$saved_at", SqliteType.Text);
+                    var pId = update.Parameters.Add("$id", SqliteType.Text);
+                    var now = DateTimeOffset.Now.ToString("O", CultureInfo.InvariantCulture);
+
+                    foreach (var row in rows)
+                    {
+                        pSegmentPm.Value = row.SegmentPm;
+                        pSavedAt.Value = now;
+                        pId.Value = row.Id;
+                        updatedCount += update.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
+                }
+                finally
+                {
+                    DbGate.Release();
+                }
+
+                if (updatedCount > 0)
+                {
+                    lock (CacheGate)
+                    {
+                        if (_isCacheLoaded && _recordsCache is not null)
+                        {
+                            var map = segmentPmByTtIoh
+                                .Where(x => !string.IsNullOrWhiteSpace(x.Key) && !string.IsNullOrWhiteSpace(x.Value))
+                                .ToDictionary(x => NormalizeKey(x.Key), x => x.Value.Trim(), StringComparer.OrdinalIgnoreCase);
+
+                            foreach (var record in _recordsCache)
+                            {
+                                var key = NormalizeKey(record.TtIoh);
+                                if (string.IsNullOrWhiteSpace(key))
+                                {
+                                    continue;
+                                }
+
+                                if (map.TryGetValue(key, out var segmentPm))
+                                {
+                                    record.SegmentPm = segmentPm;
+                                }
+                            }
+                        }
+                    }
+
+                    RaiseRecordsChanged();
+                }
+
+                return updatedCount;
+            });
         }
 
         public static async Task<BulkUpsertResult> BulkUpsertByTtIohAsync(IEnumerable<LocalFormRecord> records)
@@ -395,6 +506,7 @@ namespace NOCREPORTGENERATOR.Services
                     "show_segment_route INTEGER NOT NULL, " +
                     "show_system_key INTEGER NOT NULL, " +
                     "segment_route TEXT, " +
+                    "segment_pm TEXT, " +
                     "system_key TEXT, " +
                     "coordinate TEXT, " +
                     "update_progress TEXT, " +
@@ -404,6 +516,7 @@ namespace NOCREPORTGENERATOR.Services
                 EnsureColumnExists(connection, "tt_forms", "status_link", "TEXT");
                 EnsureColumnExists(connection, "tt_forms", "impact_list_json", "TEXT");
                 EnsureColumnExists(connection, "tt_forms", "finish_date_time", "TEXT");
+                EnsureColumnExists(connection, "tt_forms", "segment_pm", "TEXT");
 
                 using var indexCommand = connection.CreateCommand();
                 indexCommand.CommandText =
@@ -473,13 +586,13 @@ namespace NOCREPORTGENERATOR.Services
 
             command.CommandText =
                 "INSERT INTO tt_forms " +
-                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, finish_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, system_key, coordinate, update_progress, impact_list_json) " +
+                "(id, name, saved_at, tt_ioh, title, occur_date_time, dispatch_date_time, finish_date_time, status_link, pic, root_cause, cut_point, show_segment_route, show_system_key, segment_route, segment_pm, system_key, coordinate, update_progress, impact_list_json) " +
                 "VALUES " +
-                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $finish_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $system_key, $coordinate, $update_progress, $impact_list_json) " +
+                "($id, $name, $saved_at, $tt_ioh, $title, $occur_date_time, $dispatch_date_time, $finish_date_time, $status_link, $pic, $root_cause, $cut_point, $show_segment_route, $show_system_key, $segment_route, $segment_pm, $system_key, $coordinate, $update_progress, $impact_list_json) " +
                 "ON CONFLICT(id) DO UPDATE SET " +
                 "name = excluded.name, saved_at = excluded.saved_at, tt_ioh = excluded.tt_ioh, title = excluded.title, occur_date_time = excluded.occur_date_time, " +
                 "dispatch_date_time = excluded.dispatch_date_time, finish_date_time = excluded.finish_date_time, status_link = excluded.status_link, pic = excluded.pic, root_cause = excluded.root_cause, cut_point = excluded.cut_point, " +
-                "show_segment_route = excluded.show_segment_route, show_system_key = excluded.show_system_key, segment_route = excluded.segment_route, " +
+                "show_segment_route = excluded.show_segment_route, show_system_key = excluded.show_system_key, segment_route = excluded.segment_route, segment_pm = excluded.segment_pm, " +
                 "system_key = excluded.system_key, coordinate = excluded.coordinate, update_progress = excluded.update_progress, impact_list_json = excluded.impact_list_json;";
 
             command.Parameters.AddWithValue("$id", safe.Id);
@@ -497,6 +610,7 @@ namespace NOCREPORTGENERATOR.Services
             command.Parameters.AddWithValue("$show_segment_route", safe.ShowSegmentRoute ? 1 : 0);
             command.Parameters.AddWithValue("$show_system_key", safe.ShowSystemKey ? 1 : 0);
             command.Parameters.AddWithValue("$segment_route", safe.SegmentRoute);
+            command.Parameters.AddWithValue("$segment_pm", safe.SegmentPm);
             command.Parameters.AddWithValue("$system_key", safe.SystemKey);
             command.Parameters.AddWithValue("$coordinate", safe.Coordinate);
             command.Parameters.AddWithValue("$update_progress", safe.UpdateProgress);
@@ -525,10 +639,11 @@ namespace NOCREPORTGENERATOR.Services
                 ShowSegmentRoute = SafeGetInt(reader, 12, 1) != 0,
                 ShowSystemKey = SafeGetInt(reader, 13, 1) != 0,
                 SegmentRoute = SafeGetString(reader, 14, string.Empty),
-                SystemKey = SafeGetString(reader, 15, string.Empty),
-                Coordinate = SafeGetString(reader, 16, string.Empty),
-                UpdateProgress = SafeGetString(reader, 17, string.Empty),
-                ImpactList = DeserializeImpactList(SafeGetString(reader, 18, string.Empty))
+                SegmentPm = SafeGetString(reader, 15, string.Empty),
+                SystemKey = SafeGetString(reader, 16, string.Empty),
+                Coordinate = SafeGetString(reader, 17, string.Empty),
+                UpdateProgress = SafeGetString(reader, 18, string.Empty),
+                ImpactList = DeserializeImpactList(SafeGetString(reader, 19, string.Empty))
             };
         }
 
@@ -555,6 +670,7 @@ namespace NOCREPORTGENERATOR.Services
                 ShowSegmentRoute = record.ShowSegmentRoute,
                 ShowSystemKey = record.ShowSystemKey,
                 SegmentRoute = record.SegmentRoute ?? string.Empty,
+                SegmentPm = record.SegmentPm ?? string.Empty,
                 SystemKey = record.SystemKey ?? string.Empty,
                 Coordinate = record.Coordinate ?? string.Empty,
                 UpdateProgress = record.UpdateProgress ?? string.Empty,
@@ -581,6 +697,7 @@ namespace NOCREPORTGENERATOR.Services
                 ShowSegmentRoute = record.ShowSegmentRoute,
                 ShowSystemKey = record.ShowSystemKey,
                 SegmentRoute = record.SegmentRoute,
+                SegmentPm = record.SegmentPm,
                 SystemKey = record.SystemKey,
                 Coordinate = record.Coordinate,
                 UpdateProgress = record.UpdateProgress,
@@ -763,6 +880,7 @@ namespace NOCREPORTGENERATOR.Services
             public string Title { get; set; } = string.Empty;
             public string CutPoint { get; set; } = string.Empty;
             public string SegmentRoute { get; set; } = string.Empty;
+            public string SegmentPm { get; set; } = string.Empty;
             public DateTimeOffset DispatchDateTime { get; set; }
             public string Coordinate { get; set; } = string.Empty;
         }

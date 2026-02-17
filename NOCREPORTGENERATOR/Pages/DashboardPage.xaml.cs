@@ -18,6 +18,8 @@ using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -48,6 +50,8 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isImportStateSubscribed;
         private bool _isRefreshingDashboard;
         private bool _hasPendingDashboardRefresh;
+        private CancellationTokenSource? _filterRefreshCts;
+        private CancellationTokenSource? _searchDebounceCts;
         private ImportJobState _lastImportState = ImportJobState.Inactive;
 
         public DashboardPage()
@@ -238,7 +242,7 @@ namespace NOCREPORTGENERATOR.Pages
             DateFilterComboBox.SelectedIndex = 0;
         }
 
-        private async System.Threading.Tasks.Task RefreshDashboardAsync()
+        private async Task RefreshDashboardAsync()
         {
             if (_isRefreshingDashboard)
             {
@@ -258,7 +262,7 @@ namespace NOCREPORTGENERATOR.Pages
 
                     UpdateHeadlineStats();
                     UpdateDataQuality(_allRecords);
-                    ApplyFilters();
+                    await ApplyFiltersAsync();
                 }
                 while (_hasPendingDashboardRefresh);
             }
@@ -284,13 +288,197 @@ namespace NOCREPORTGENERATOR.Pages
                 : "Data freshness: -";
         }
 
-        private void ApplyFilters()
+        private void RequestFilterRefresh(bool debounce)
         {
-            var query = SearchTextBox.Text?.Trim() ?? string.Empty;
-            var statusFilter = StatusFilterComboBox.SelectedItem as string ?? "Semua Status";
-            var dateFilter = DateFilterComboBox.SelectedItem as string ?? "Semua Waktu";
+            if (debounce)
+            {
+                DebounceApplyFilters();
+                return;
+            }
 
-            IEnumerable<LocalFormRecord> filtered = _allRecords;
+            _ = ApplyFiltersAsync();
+        }
+
+        private void DebounceApplyFilters(int delayMs = 180)
+        {
+            _searchDebounceCts?.Cancel();
+            _searchDebounceCts?.Dispose();
+            var cts = new CancellationTokenSource();
+            _searchDebounceCts = cts;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delayMs);
+                    if (cts.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    _ = DispatcherQueue.TryEnqueue(() =>
+                    {
+                        _ = ApplyFiltersAsync();
+                    });
+                }
+                finally
+                {
+                    if (ReferenceEquals(_searchDebounceCts, cts))
+                    {
+                        cts.Dispose();
+                        _searchDebounceCts = null;
+                    }
+                }
+            });
+        }
+
+        private async Task ApplyFiltersAsync()
+        {
+            var cts = new CancellationTokenSource();
+            var previous = Interlocked.Exchange(ref _filterRefreshCts, cts);
+            if (previous is not null)
+            {
+                try
+                {
+                    previous.Cancel();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    previous.Dispose();
+                }
+            }
+
+            try
+            {
+                var token = cts.Token;
+                var query = SearchTextBox.Text?.Trim() ?? string.Empty;
+                var statusFilter = StatusFilterComboBox.SelectedItem as string ?? "Semua Status";
+                var dateFilter = DateFilterComboBox.SelectedItem as string ?? "Semua Waktu";
+                var selectedRecordId = _selectedItem?.Record.Id ?? string.Empty;
+                var recordsSnapshot = _allRecords.ToList();
+
+                var prepared = await Task.Run(
+                    () => PrepareDashboardData(
+                        recordsSnapshot,
+                        query,
+                        statusFilter,
+                        dateFilter,
+                        selectedRecordId,
+                        token));
+
+                if (prepared is null || token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                ApplyOperationalMetrics(prepared.OperationalMetrics);
+                ApplyCharts(prepared.Chart);
+                TopSegmentListView.ItemsSource = prepared.TopSegments;
+                PriorityQueueListView.ItemsSource = prepared.PriorityQueue;
+
+                _filteredItems.Clear();
+                _filteredItems.AddRange(prepared.HistoryItems);
+                HistoryListView.ItemsSource = null;
+                HistoryListView.ItemsSource = _filteredItems;
+                HistoryCountTextBlock.Text = prepared.HistoryCountText;
+
+                if (_filteredItems.Count == 0)
+                {
+                    SelectItem(null);
+                    return;
+                }
+
+                DashboardHistoryItem? selected = null;
+                if (!string.IsNullOrWhiteSpace(prepared.SelectedRecordId))
+                {
+                    selected = _filteredItems.FirstOrDefault(x =>
+                        x.Record.Id.Equals(prepared.SelectedRecordId, StringComparison.OrdinalIgnoreCase));
+                }
+
+                selected ??= _filteredItems[0];
+                SelectItem(selected);
+                HistoryListView.SelectedItem = selected;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("DashboardPage.ApplyFiltersAsync", ex);
+            }
+            finally
+            {
+                if (ReferenceEquals(_filterRefreshCts, cts))
+                {
+                    cts.Dispose();
+                    _filterRefreshCts = null;
+                }
+                else
+                {
+                    cts.Dispose();
+                }
+            }
+        }
+
+        private static IEnumerable<LocalFormRecord> ApplyStatusFilter(IEnumerable<LocalFormRecord> data, string statusFilter)
+        {
+            return statusFilter switch
+            {
+                "Open" => data.Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase)),
+                "Closed" => data.Where(x => GetRecordStatus(x).Equals("closed", StringComparison.OrdinalIgnoreCase)),
+                "Cancel" => data.Where(x => GetRecordStatus(x).Equals("cancel", StringComparison.OrdinalIgnoreCase)),
+                "Open (Critical/Major)" => data.Where(x =>
+                {
+                    var severity = GetSeverity(x);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                           (severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ||
+                            severity.Equals("major", StringComparison.OrdinalIgnoreCase));
+                }),
+                "Open Critical" => data.Where(x =>
+                {
+                    var severity = GetSeverity(x);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                           severity.Equals("critical", StringComparison.OrdinalIgnoreCase);
+                }),
+                "Open Major" => data.Where(x =>
+                {
+                    var severity = GetSeverity(x);
+                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
+                           severity.Equals("major", StringComparison.OrdinalIgnoreCase);
+                }),
+                _ => data
+            };
+        }
+
+        private static IEnumerable<LocalFormRecord> ApplyDateFilter(IEnumerable<LocalFormRecord> data, string dateFilter)
+        {
+            var today = DateTime.Today;
+            return dateFilter switch
+            {
+                "Hari Ini" => data.Where(x => x.OccurDateTime.LocalDateTime.Date == today),
+                "7 Hari Terakhir" => data.Where(x => x.OccurDateTime.LocalDateTime.Date >= today.AddDays(-7)),
+                "30 Hari Terakhir" => data.Where(x => x.OccurDateTime.LocalDateTime.Date >= today.AddDays(-30)),
+                _ => data
+            };
+        }
+
+        private static DashboardPreparedData? PrepareDashboardData(
+            IReadOnlyList<LocalFormRecord> allRecords,
+            string query,
+            string statusFilter,
+            string dateFilter,
+            string selectedRecordId,
+            CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            IEnumerable<LocalFormRecord> filtered = allRecords;
             filtered = ApplyStatusFilter(filtered, statusFilter);
             filtered = ApplyDateFilter(filtered, dateFilter);
 
@@ -306,34 +494,56 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             var filteredRecords = filtered.ToList();
-            UpdateOperationalMetrics(filteredRecords);
-            UpdateCharts(filteredRecords);
-            UpdateInsights(filteredRecords);
-
-            _filteredItems.Clear();
-            _filteredItems.AddRange(filteredRecords
-                .Take(MaxHistoryListItems)
-                .Select(ToHistoryItem));
-            HistoryListView.ItemsSource = null;
-            HistoryListView.ItemsSource = _filteredItems;
-            HistoryCountTextBlock.Text = filteredRecords.Count > MaxHistoryListItems
-                ? _filteredItems.Count + " / " + filteredRecords.Count + " item"
-                : _filteredItems.Count + " item";
-
-            if (_filteredItems.Count == 0)
+            if (cancellationToken.IsCancellationRequested)
             {
-                SelectItem(null);
-                return;
+                return null;
             }
 
-            var selected = _selectedItem is null
-                ? _filteredItems[0]
-                : _filteredItems.FirstOrDefault(x => x.Record.Id.Equals(_selectedItem.Record.Id, StringComparison.OrdinalIgnoreCase));
-            SelectItem(selected ?? _filteredItems[0]);
-            HistoryListView.SelectedItem = selected ?? _filteredItems[0];
+            var now = DateTimeOffset.Now;
+            var operationalMetrics = BuildOperationalMetricsSnapshot(filteredRecords, now);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            var chart = BuildChartSnapshot(filteredRecords, now);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            var insights = BuildInsightSnapshot(filteredRecords, now);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            var historyItems = filteredRecords
+                .Take(MaxHistoryListItems)
+                .Select(ToHistoryItem)
+                .ToList();
+
+            var historyCountText = filteredRecords.Count > MaxHistoryListItems
+                ? historyItems.Count + " / " + filteredRecords.Count + " item"
+                : historyItems.Count + " item";
+
+            var selectedId = string.IsNullOrWhiteSpace(selectedRecordId) && historyItems.Count > 0
+                ? historyItems[0].Record.Id
+                : selectedRecordId;
+
+            return new DashboardPreparedData(
+                operationalMetrics,
+                chart,
+                insights.TopSegments,
+                insights.PriorityQueue,
+                historyItems,
+                historyCountText,
+                selectedId);
         }
 
-        private void UpdateOperationalMetrics(IReadOnlyList<LocalFormRecord> records)
+        private static DashboardOperationalMetricsSnapshot BuildOperationalMetricsSnapshot(
+            IReadOnlyList<LocalFormRecord> records,
+            DateTimeOffset now)
         {
             var openAll = 0;
             var openCritical = 0;
@@ -343,7 +553,6 @@ namespace NOCREPORTGENERATOR.Pages
             var cancel = 0;
             var aging24h = 0;
             var aging72h = 0;
-            var now = DateTimeOffset.Now;
 
             foreach (var record in records)
             {
@@ -371,6 +580,7 @@ namespace NOCREPORTGENERATOR.Pages
                     {
                         aging24h++;
                     }
+
                     if (ageHours >= 72)
                     {
                         aging72h++;
@@ -427,7 +637,7 @@ namespace NOCREPORTGENERATOR.Pages
             var repeatRate = rootCausePool.Count == 0 ? 0 : repeated * 100d / rootCausePool.Count;
 
             var last7Days = Enumerable.Range(0, 7)
-                .Select(i => DateTime.Today.AddDays(-i))
+                .Select(i => now.LocalDateTime.Date.AddDays(-i))
                 .OrderBy(x => x)
                 .ToList();
             var dayCounts = last7Days
@@ -438,38 +648,173 @@ namespace NOCREPORTGENERATOR.Pages
             var forecast = (int)Math.Round(dayCounts.DefaultIfEmpty(0).Average(), MidpointRounding.AwayFromZero);
             var anomalyText = BuildAnomalyText(todayCount, baseline);
 
-            OpenAllTextBlock.Text = openAll.ToString(CultureInfo.InvariantCulture);
-            OpenCriticalTextBlock.Text = openCritical.ToString(CultureInfo.InvariantCulture);
-            OpenMajorTextBlock.Text = openMajor.ToString(CultureInfo.InvariantCulture);
-            OpenMinorTextBlock.Text = openMinor.ToString(CultureInfo.InvariantCulture);
-            ClosedTextBlock.Text = closed.ToString(CultureInfo.InvariantCulture);
-            CancelTextBlock.Text = cancel.ToString(CultureInfo.InvariantCulture);
-            MttaTextBlock.Text = ((int)Math.Round(mttaMinutes, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture);
-            MttrTextBlock.Text = ((int)Math.Round(mttrMinutes, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture);
-            SlaComplianceTextBlock.Text = (closedSample == 0 ? 0 : (closedWithinSla * 100d / closedSample)).ToString("0.0", CultureInfo.InvariantCulture) + "%";
-            RepeatIncidentTextBlock.Text = repeatRate.ToString("0.0", CultureInfo.InvariantCulture) + "%";
-            Aging24hTextBlock.Text = aging24h.ToString(CultureInfo.InvariantCulture);
-            Aging72hTextBlock.Text = aging72h.ToString(CultureInfo.InvariantCulture);
-            ForecastTextBlock.Text = forecast.ToString(CultureInfo.InvariantCulture) + " TT";
-            AnomalyTextBlock.Text = anomalyText;
+            return new DashboardOperationalMetricsSnapshot(
+                openAll,
+                openCritical,
+                openMajor,
+                openMinor,
+                closed,
+                cancel,
+                (int)Math.Round(mttaMinutes, MidpointRounding.AwayFromZero),
+                (int)Math.Round(mttrMinutes, MidpointRounding.AwayFromZero),
+                closedSample == 0 ? 0 : (closedWithinSla * 100d / closedSample),
+                repeatRate,
+                aging24h,
+                aging72h,
+                forecast,
+                anomalyText);
         }
 
-        private void UpdateCharts(IReadOnlyList<LocalFormRecord> records)
+        private static DashboardChartSnapshot BuildChartSnapshot(
+            IReadOnlyList<LocalFormRecord> records,
+            DateTimeOffset now)
         {
             var dayLabels = new List<string>();
             var dayValues = new List<int>();
             for (var i = 6; i >= 0; i--)
             {
-                var date = DateTime.Today.AddDays(-i);
+                var date = now.LocalDateTime.Date.AddDays(-i);
                 dayLabels.Add(date.ToString("dd MMM", CultureInfo.InvariantCulture));
                 dayValues.Add(records.Count(x => x.OccurDateTime.LocalDateTime.Date == date));
             }
 
+            var open = 0;
+            var closed = 0;
+            var cancel = 0;
+            foreach (var record in records)
+            {
+                var normalizedStatus = GetRecordStatus(record);
+                if (normalizedStatus.Equals("open", StringComparison.OrdinalIgnoreCase))
+                {
+                    open++;
+                }
+                else if (normalizedStatus.Equals("closed", StringComparison.OrdinalIgnoreCase))
+                {
+                    closed++;
+                }
+                else if (normalizedStatus.Equals("cancel", StringComparison.OrdinalIgnoreCase))
+                {
+                    cancel++;
+                }
+            }
+
+            var onTrack = 0;
+            var atRisk = 0;
+            var breached = 0;
+            foreach (var record in records.Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase)))
+            {
+                var threshold = GetSlaThresholdHours(GetSeverity(record));
+                var ageHours = Math.Max(0, (now - record.OccurDateTime).TotalHours);
+                if (ageHours >= threshold)
+                {
+                    breached++;
+                }
+                else if (ageHours >= threshold * 0.8)
+                {
+                    atRisk++;
+                }
+                else
+                {
+                    onTrack++;
+                }
+            }
+
+            var topPic = records
+                .Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase))
+                .GroupBy(x => NormalizeText(x.Pic), StringComparer.OrdinalIgnoreCase)
+                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
+                .OrderByDescending(x => x.Count())
+                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(8)
+                .ToList();
+
+            var topRoot = records
+                .Select(x => NormalizeRootCause(x.RootCause))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(x => x.Count())
+                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(8)
+                .ToList();
+
+            return new DashboardChartSnapshot(
+                dayLabels,
+                dayValues,
+                open,
+                closed,
+                cancel,
+                onTrack,
+                atRisk,
+                breached,
+                topPic.Select(x => Shorten(x.Key, 12)).ToList(),
+                topPic.Select(x => x.Count()).ToList(),
+                topRoot.Select(x => Shorten(x.Key, 16)).ToList(),
+                topRoot.Select(x => x.Count()).ToList());
+        }
+
+        private static DashboardInsightSnapshot BuildInsightSnapshot(
+            IReadOnlyList<LocalFormRecord> records,
+            DateTimeOffset now)
+        {
+            var topSegments = records
+                .Where(x => !string.IsNullOrWhiteSpace(x.SegmentRoute))
+                .GroupBy(x => x.SegmentRoute.Trim(), StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(x => x.Count())
+                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                .Take(12)
+                .Select(x => new RankedItem(Shorten(x.Key, 34), x.Count().ToString(CultureInfo.InvariantCulture)))
+                .ToList();
+
+            var priority = records
+                .Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase))
+                .Select(x =>
+                {
+                    var severity = GetSeverity(x);
+                    var threshold = GetSlaThresholdHours(severity);
+                    var age = Math.Max(0, (now - x.OccurDateTime).TotalHours);
+                    var risk = age >= threshold ? "Breached" : age >= threshold * 0.8 ? "At Risk" : "On Track";
+                    var riskWeight = risk.Equals("Breached", StringComparison.OrdinalIgnoreCase) ? 3 : risk.Equals("At Risk", StringComparison.OrdinalIgnoreCase) ? 2 : 1;
+                    var severityWeight = severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ? 3 : severity.Equals("major", StringComparison.OrdinalIgnoreCase) ? 2 : severity.Equals("minor", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+                    return new { Record = x, Severity = severity, Risk = risk, RiskWeight = riskWeight, SeverityWeight = severityWeight, Age = age };
+                })
+                .OrderByDescending(x => x.RiskWeight)
+                .ThenByDescending(x => x.SeverityWeight)
+                .ThenByDescending(x => x.Age)
+                .Take(20)
+                .Select(x => new PriorityQueueItem(
+                    string.IsNullOrWhiteSpace(x.Record.TtIoh) ? GetIncNumber(x.Record.Title) : x.Record.TtIoh,
+                    string.IsNullOrWhiteSpace(x.Record.SegmentRoute) ? "-" : x.Record.SegmentRoute,
+                    (string.IsNullOrWhiteSpace(x.Severity) ? "unknown" : x.Severity) + " | " + x.Risk + " | Age " + ((int)Math.Round(x.Age, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture) + "h"))
+                .ToList();
+
+            return new DashboardInsightSnapshot(topSegments, priority);
+        }
+
+        private void ApplyOperationalMetrics(DashboardOperationalMetricsSnapshot metrics)
+        {
+            OpenAllTextBlock.Text = metrics.OpenAll.ToString(CultureInfo.InvariantCulture);
+            OpenCriticalTextBlock.Text = metrics.OpenCritical.ToString(CultureInfo.InvariantCulture);
+            OpenMajorTextBlock.Text = metrics.OpenMajor.ToString(CultureInfo.InvariantCulture);
+            OpenMinorTextBlock.Text = metrics.OpenMinor.ToString(CultureInfo.InvariantCulture);
+            ClosedTextBlock.Text = metrics.Closed.ToString(CultureInfo.InvariantCulture);
+            CancelTextBlock.Text = metrics.Cancel.ToString(CultureInfo.InvariantCulture);
+            MttaTextBlock.Text = metrics.MttaMinutes.ToString(CultureInfo.InvariantCulture);
+            MttrTextBlock.Text = metrics.MttrMinutes.ToString(CultureInfo.InvariantCulture);
+            SlaComplianceTextBlock.Text = metrics.SlaCompliance.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+            RepeatIncidentTextBlock.Text = metrics.RepeatIncidentRate.ToString("0.0", CultureInfo.InvariantCulture) + "%";
+            Aging24hTextBlock.Text = metrics.Aging24h.ToString(CultureInfo.InvariantCulture);
+            Aging72hTextBlock.Text = metrics.Aging72h.ToString(CultureInfo.InvariantCulture);
+            ForecastTextBlock.Text = metrics.Forecast.ToString(CultureInfo.InvariantCulture) + " TT";
+            AnomalyTextBlock.Text = metrics.AnomalyText;
+        }
+
+        private void ApplyCharts(DashboardChartSnapshot chart)
+        {
             DailyTrendXAxes = new[]
             {
                 new Axis
                 {
-                    Labels = dayLabels,
+                    Labels = chart.DayLabels.ToList(),
                     LabelsRotation = 0,
                     TextSize = 11,
                     MinStep = 1
@@ -489,14 +834,14 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 new ColumnSeries<int>
                 {
-                    Values = dayValues,
+                    Values = chart.DayValues,
                     Name = "Total TT",
                     Fill = new SolidColorPaint(new SKColor(52, 152, 219)),
                     Stroke = null
                 },
                 new LineSeries<int>
                 {
-                    Values = dayValues,
+                    Values = chart.DayValues,
                     Name = "Baseline",
                     Fill = null,
                     Stroke = new SolidColorPaint(new SKColor(36, 87, 148), 2),
@@ -504,77 +849,25 @@ namespace NOCREPORTGENERATOR.Pages
                 }
             };
 
-            var open = 0;
-            var closed = 0;
-            var cancel = 0;
-
-            foreach (var record in records)
-            {
-                var normalizedStatus = GetRecordStatus(record);
-
-                if (normalizedStatus.Equals("open", StringComparison.OrdinalIgnoreCase))
-                {
-                    open++;
-                }
-                else if (normalizedStatus.Equals("closed", StringComparison.OrdinalIgnoreCase))
-                {
-                    closed++;
-                }
-                else if (normalizedStatus.Equals("cancel", StringComparison.OrdinalIgnoreCase))
-                {
-                    cancel++;
-                }
-            }
-
             LinkStatusSeries = new ISeries[]
             {
-                BuildPie("Open", open, new SKColor(236, 99, 118)),
-                BuildPie("Closed", closed, new SKColor(79, 176, 112)),
-                BuildPie("Cancel", cancel, new SKColor(255, 179, 71))
+                BuildPie("Open", chart.Open, new SKColor(236, 99, 118)),
+                BuildPie("Closed", chart.Closed, new SKColor(79, 176, 112)),
+                BuildPie("Cancel", chart.Cancel, new SKColor(255, 179, 71))
             };
-
-            var onTrack = 0;
-            var atRisk = 0;
-            var breached = 0;
-            foreach (var record in records.Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase)))
-            {
-                var threshold = GetSlaThresholdHours(GetSeverity(record));
-                var ageHours = Math.Max(0, (DateTimeOffset.Now - record.OccurDateTime).TotalHours);
-                if (ageHours >= threshold)
-                {
-                    breached++;
-                }
-                else if (ageHours >= threshold * 0.8)
-                {
-                    atRisk++;
-                }
-                else
-                {
-                    onTrack++;
-                }
-            }
 
             SlaRiskSeries = new ISeries[]
             {
-                BuildPie("On Track", onTrack, new SKColor(80, 200, 120)),
-                BuildPie("At Risk", atRisk, new SKColor(255, 190, 92)),
-                BuildPie("Breached", breached, new SKColor(235, 87, 87))
+                BuildPie("On Track", chart.OnTrack, new SKColor(80, 200, 120)),
+                BuildPie("At Risk", chart.AtRisk, new SKColor(255, 190, 92)),
+                BuildPie("Breached", chart.Breached, new SKColor(235, 87, 87))
             };
-
-            var topPic = records
-                .Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase))
-                .GroupBy(x => NormalizeText(x.Pic), StringComparer.OrdinalIgnoreCase)
-                .Where(x => !string.IsNullOrWhiteSpace(x.Key))
-                .OrderByDescending(x => x.Count())
-                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-                .Take(8)
-                .ToList();
 
             PicWorkloadXAxes = new[]
             {
                 new Axis
                 {
-                    Labels = topPic.Select(x => Shorten(x.Key, 12)).ToList(),
+                    Labels = chart.TopPicLabels.ToList(),
                     LabelsRotation = 0,
                     TextSize = 11,
                     MinStep = 1
@@ -585,27 +878,18 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 new ColumnSeries<int>
                 {
-                    Values = topPic.Select(x => x.Count()).ToList(),
+                    Values = chart.TopPicValues,
                     Name = "Open TT",
                     Fill = new SolidColorPaint(new SKColor(67, 160, 71)),
                     Stroke = null
                 }
             };
 
-            var topRoot = records
-                .Select(x => NormalizeRootCause(x.RootCause))
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(x => x.Count())
-                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-                .Take(8)
-                .ToList();
-
             RootCauseXAxes = new[]
             {
                 new Axis
                 {
-                    Labels = topRoot.Select(x => Shorten(x.Key, 16)).ToList(),
+                    Labels = chart.TopRootCauseLabels.ToList(),
                     LabelsRotation = 0,
                     TextSize = 11,
                     MinStep = 1
@@ -616,53 +900,11 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 new ColumnSeries<int>
                 {
-                    Values = topRoot.Select(x => x.Count()).ToList(),
+                    Values = chart.TopRootCauseValues,
                     Name = "Incident",
                     Fill = new SolidColorPaint(new SKColor(106, 90, 205)),
                     Stroke = null
                 }
-            };
-        }
-
-        private static IEnumerable<LocalFormRecord> ApplyStatusFilter(IEnumerable<LocalFormRecord> data, string statusFilter)
-        {
-            return statusFilter switch
-            {
-                "Open" => data.Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase)),
-                "Closed" => data.Where(x => GetRecordStatus(x).Equals("closed", StringComparison.OrdinalIgnoreCase)),
-                "Cancel" => data.Where(x => GetRecordStatus(x).Equals("cancel", StringComparison.OrdinalIgnoreCase)),
-                "Open (Critical/Major)" => data.Where(x =>
-                {
-                    var severity = GetSeverity(x);
-                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
-                           (severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ||
-                            severity.Equals("major", StringComparison.OrdinalIgnoreCase));
-                }),
-                "Open Critical" => data.Where(x =>
-                {
-                    var severity = GetSeverity(x);
-                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
-                           severity.Equals("critical", StringComparison.OrdinalIgnoreCase);
-                }),
-                "Open Major" => data.Where(x =>
-                {
-                    var severity = GetSeverity(x);
-                    return GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase) &&
-                           severity.Equals("major", StringComparison.OrdinalIgnoreCase);
-                }),
-                _ => data
-            };
-        }
-
-        private static IEnumerable<LocalFormRecord> ApplyDateFilter(IEnumerable<LocalFormRecord> data, string dateFilter)
-        {
-            var today = DateTime.Today;
-            return dateFilter switch
-            {
-                "Hari Ini" => data.Where(x => x.OccurDateTime.LocalDateTime.Date == today),
-                "7 Hari Terakhir" => data.Where(x => x.OccurDateTime.LocalDateTime.Date >= today.AddDays(-7)),
-                "30 Hari Terakhir" => data.Where(x => x.OccurDateTime.LocalDateTime.Date >= today.AddDays(-30)),
-                _ => data
             };
         }
 
@@ -676,42 +918,6 @@ namespace NOCREPORTGENERATOR.Pages
             MissingSystemKeyTextBlock.Text = "Missing System Key: " + missingSystem + " (" + (missingSystem * 100d / total).ToString("0.0", CultureInfo.InvariantCulture) + "%)";
             MissingSegmentTextBlock.Text = "Missing Segment Route: " + missingSegment + " (" + (missingSegment * 100d / total).ToString("0.0", CultureInfo.InvariantCulture) + "%)";
             MissingPicTextBlock.Text = "Missing PIC: " + missingPic + " (" + (missingPic * 100d / total).ToString("0.0", CultureInfo.InvariantCulture) + "%)";
-        }
-
-        private void UpdateInsights(IReadOnlyList<LocalFormRecord> records)
-        {
-            var topSegments = records
-                .Where(x => !string.IsNullOrWhiteSpace(x.SegmentRoute))
-                .GroupBy(x => x.SegmentRoute.Trim(), StringComparer.OrdinalIgnoreCase)
-                .OrderByDescending(x => x.Count())
-                .ThenBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
-                .Take(12)
-                .Select(x => new RankedItem(Shorten(x.Key, 34), x.Count().ToString(CultureInfo.InvariantCulture)))
-                .ToList();
-            TopSegmentListView.ItemsSource = topSegments;
-
-            var priority = records
-                .Where(x => GetRecordStatus(x).Equals("open", StringComparison.OrdinalIgnoreCase))
-                .Select(x =>
-                {
-                    var severity = GetSeverity(x);
-                    var threshold = GetSlaThresholdHours(severity);
-                    var age = Math.Max(0, (DateTimeOffset.Now - x.OccurDateTime).TotalHours);
-                    var risk = age >= threshold ? "Breached" : age >= threshold * 0.8 ? "At Risk" : "On Track";
-                    var riskWeight = risk.Equals("Breached", StringComparison.OrdinalIgnoreCase) ? 3 : risk.Equals("At Risk", StringComparison.OrdinalIgnoreCase) ? 2 : 1;
-                    var severityWeight = severity.Equals("critical", StringComparison.OrdinalIgnoreCase) ? 3 : severity.Equals("major", StringComparison.OrdinalIgnoreCase) ? 2 : severity.Equals("minor", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-                    return new { Record = x, Severity = severity, Risk = risk, RiskWeight = riskWeight, SeverityWeight = severityWeight, Age = age };
-                })
-                .OrderByDescending(x => x.RiskWeight)
-                .ThenByDescending(x => x.SeverityWeight)
-                .ThenByDescending(x => x.Age)
-                .Take(20)
-                .Select(x => new PriorityQueueItem(
-                    string.IsNullOrWhiteSpace(x.Record.TtIoh) ? GetIncNumber(x.Record.Title) : x.Record.TtIoh,
-                    string.IsNullOrWhiteSpace(x.Record.SegmentRoute) ? "-" : x.Record.SegmentRoute,
-                    (string.IsNullOrWhiteSpace(x.Severity) ? "unknown" : x.Severity) + " | " + x.Risk + " | Age " + ((int)Math.Round(x.Age, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture) + "h"))
-                .ToList();
-            PriorityQueueListView.ItemsSource = priority;
         }
 
         private static PieSeries<int> BuildPie(string name, int value, SKColor color)
@@ -929,17 +1135,17 @@ namespace NOCREPORTGENERATOR.Pages
 
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-            ApplyFilters();
+            RequestFilterRefresh(debounce: true);
         }
 
         private void StatusFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ApplyFilters();
+            RequestFilterRefresh(debounce: false);
         }
 
         private void DateFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            ApplyFilters();
+            RequestFilterRefresh(debounce: false);
         }
 
         private void HistoryListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -1092,6 +1298,143 @@ namespace NOCREPORTGENERATOR.Pages
             ImportStateTextBlock.Text = state.IsActive
                 ? state.Message + (state.IsIndeterminate ? string.Empty : " (" + state.Percent.ToString("0", CultureInfo.InvariantCulture) + "%)")
                 : (string.IsNullOrWhiteSpace(state.Message) ? "Idle" : state.Message);
+        }
+
+        private sealed class DashboardPreparedData
+        {
+            public DashboardPreparedData(
+                DashboardOperationalMetricsSnapshot operationalMetrics,
+                DashboardChartSnapshot chart,
+                IReadOnlyList<RankedItem> topSegments,
+                IReadOnlyList<PriorityQueueItem> priorityQueue,
+                IReadOnlyList<DashboardHistoryItem> historyItems,
+                string historyCountText,
+                string selectedRecordId)
+            {
+                OperationalMetrics = operationalMetrics;
+                Chart = chart;
+                TopSegments = topSegments;
+                PriorityQueue = priorityQueue;
+                HistoryItems = historyItems;
+                HistoryCountText = historyCountText;
+                SelectedRecordId = selectedRecordId;
+            }
+
+            public DashboardOperationalMetricsSnapshot OperationalMetrics { get; }
+            public DashboardChartSnapshot Chart { get; }
+            public IReadOnlyList<RankedItem> TopSegments { get; }
+            public IReadOnlyList<PriorityQueueItem> PriorityQueue { get; }
+            public IReadOnlyList<DashboardHistoryItem> HistoryItems { get; }
+            public string HistoryCountText { get; }
+            public string SelectedRecordId { get; }
+        }
+
+        private sealed class DashboardOperationalMetricsSnapshot
+        {
+            public DashboardOperationalMetricsSnapshot(
+                int openAll,
+                int openCritical,
+                int openMajor,
+                int openMinor,
+                int closed,
+                int cancel,
+                int mttaMinutes,
+                int mttrMinutes,
+                double slaCompliance,
+                double repeatIncidentRate,
+                int aging24h,
+                int aging72h,
+                int forecast,
+                string anomalyText)
+            {
+                OpenAll = openAll;
+                OpenCritical = openCritical;
+                OpenMajor = openMajor;
+                OpenMinor = openMinor;
+                Closed = closed;
+                Cancel = cancel;
+                MttaMinutes = mttaMinutes;
+                MttrMinutes = mttrMinutes;
+                SlaCompliance = slaCompliance;
+                RepeatIncidentRate = repeatIncidentRate;
+                Aging24h = aging24h;
+                Aging72h = aging72h;
+                Forecast = forecast;
+                AnomalyText = anomalyText;
+            }
+
+            public int OpenAll { get; }
+            public int OpenCritical { get; }
+            public int OpenMajor { get; }
+            public int OpenMinor { get; }
+            public int Closed { get; }
+            public int Cancel { get; }
+            public int MttaMinutes { get; }
+            public int MttrMinutes { get; }
+            public double SlaCompliance { get; }
+            public double RepeatIncidentRate { get; }
+            public int Aging24h { get; }
+            public int Aging72h { get; }
+            public int Forecast { get; }
+            public string AnomalyText { get; }
+        }
+
+        private sealed class DashboardChartSnapshot
+        {
+            public DashboardChartSnapshot(
+                IReadOnlyList<string> dayLabels,
+                IReadOnlyList<int> dayValues,
+                int open,
+                int closed,
+                int cancel,
+                int onTrack,
+                int atRisk,
+                int breached,
+                IReadOnlyList<string> topPicLabels,
+                IReadOnlyList<int> topPicValues,
+                IReadOnlyList<string> topRootCauseLabels,
+                IReadOnlyList<int> topRootCauseValues)
+            {
+                DayLabels = dayLabels;
+                DayValues = dayValues;
+                Open = open;
+                Closed = closed;
+                Cancel = cancel;
+                OnTrack = onTrack;
+                AtRisk = atRisk;
+                Breached = breached;
+                TopPicLabels = topPicLabels;
+                TopPicValues = topPicValues;
+                TopRootCauseLabels = topRootCauseLabels;
+                TopRootCauseValues = topRootCauseValues;
+            }
+
+            public IReadOnlyList<string> DayLabels { get; }
+            public IReadOnlyList<int> DayValues { get; }
+            public int Open { get; }
+            public int Closed { get; }
+            public int Cancel { get; }
+            public int OnTrack { get; }
+            public int AtRisk { get; }
+            public int Breached { get; }
+            public IReadOnlyList<string> TopPicLabels { get; }
+            public IReadOnlyList<int> TopPicValues { get; }
+            public IReadOnlyList<string> TopRootCauseLabels { get; }
+            public IReadOnlyList<int> TopRootCauseValues { get; }
+        }
+
+        private sealed class DashboardInsightSnapshot
+        {
+            public DashboardInsightSnapshot(
+                IReadOnlyList<RankedItem> topSegments,
+                IReadOnlyList<PriorityQueueItem> priorityQueue)
+            {
+                TopSegments = topSegments;
+                PriorityQueue = priorityQueue;
+            }
+
+            public IReadOnlyList<RankedItem> TopSegments { get; }
+            public IReadOnlyList<PriorityQueueItem> PriorityQueue { get; }
         }
 
         private sealed class DashboardHistoryItem

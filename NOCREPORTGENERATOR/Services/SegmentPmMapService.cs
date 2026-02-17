@@ -13,6 +13,31 @@ namespace NOCREPORTGENERATOR.Services
 {
     public static class SegmentPmMapService
     {
+        private static readonly string[] SheetNameMustContainAny =
+        {
+            "fiberassetmaster",
+            "newlink"
+        };
+        private static readonly string[] HeaderScoreHints =
+        {
+            "routesegment",
+            "siteida",
+            "siteidb",
+            "lata",
+            "longa",
+            "latb",
+            "longb"
+        };
+        private static readonly string[] RoutePrefixes = { "routesegment2025", "routesegment2024", "routesegment", "route" };
+        private static readonly string[] UniqueIdPrefixes = { "uniqueid", "uid" };
+        private static readonly string[] SiteAIdPrefixes = { "siteida", "sitecodea", "sitea" };
+        private static readonly string[] SiteANamePrefixes = { "sitenamea", "namaa", "siteaname" };
+        private static readonly string[] LonAPrefixes = { "longa", "lnga", "longitudea", "lona" };
+        private static readonly string[] LatAPrefixes = { "lata", "latitudea" };
+        private static readonly string[] SiteBIdPrefixes = { "siteidb", "sitecodeb", "siteb" };
+        private static readonly string[] SiteBNamePrefixes = { "sitenameb", "namab", "sitebname" };
+        private static readonly string[] LonBPrefixes = { "longb", "lngb", "longitudeb", "lonb" };
+        private static readonly string[] LatBPrefixes = { "latb", "latitudeb" };
         private static readonly SemaphoreSlim DbGate = new(1, 1);
         private static readonly string DirectoryPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -34,6 +59,23 @@ namespace NOCREPORTGENERATOR.Services
 
             await EnsureInitializedAsync();
 
+            var parsed = await Task.Run(
+                () => ParseWorkbookLinks(resolvedPath, password, cancellationToken),
+                cancellationToken);
+
+            await SaveLinksAsync(parsed.Links, resolvedPath, cancellationToken);
+
+            return new SegmentPmImportResult
+            {
+                SourcePath = resolvedPath,
+                ProcessedSheets = parsed.ProcessedSheets,
+                ProcessedRows = parsed.ProcessedRows,
+                InsertedLinks = parsed.Links.Count
+            };
+        }
+
+        private static ParsedImportLinks ParseWorkbookLinks(string resolvedPath, string password, CancellationToken cancellationToken)
+        {
             var allLinks = new List<SegmentLinkRecord>();
             var parsedRows = 0;
             var sheetProcessed = 0;
@@ -55,6 +97,7 @@ namespace NOCREPORTGENERATOR.Services
                     continue;
                 }
 
+                var linkCountBeforeSheet = allLinks.Count;
                 var rows = ReadAllRows(reader);
                 if (rows.Count == 0)
                 {
@@ -75,6 +118,11 @@ namespace NOCREPORTGENERATOR.Services
                     }
                 }
 
+                var addedOnSheet = allLinks.Count - linkCountBeforeSheet;
+                DeveloperDiagnostics.LogInfo(
+                    "SegmentPM import sheet '" + sheetName +
+                    "' parsed rows=" + Math.Max(0, rows.Count - (headerRow + 1)).ToString(CultureInfo.InvariantCulture) +
+                    ", links=" + addedOnSheet.ToString(CultureInfo.InvariantCulture));
                 sheetProcessed++;
             }
             while (reader.NextResult());
@@ -85,15 +133,12 @@ namespace NOCREPORTGENERATOR.Services
                 .Select(x => x.First())
                 .ToList();
 
-            await SaveLinksAsync(deduped, resolvedPath, cancellationToken);
+            DeveloperDiagnostics.LogInfo(
+                "SegmentPM import complete: raw links=" + allLinks.Count.ToString(CultureInfo.InvariantCulture) +
+                ", deduped links=" + deduped.Count.ToString(CultureInfo.InvariantCulture) +
+                ", sheets=" + sheetProcessed.ToString(CultureInfo.InvariantCulture));
 
-            return new SegmentPmImportResult
-            {
-                SourcePath = resolvedPath,
-                ProcessedSheets = sheetProcessed,
-                ProcessedRows = parsedRows,
-                InsertedLinks = deduped.Count
-            };
+            return new ParsedImportLinks(deduped, sheetProcessed, parsedRows);
         }
 
         public static async Task<IReadOnlyList<SegmentSiteLinkPoint>> GetLinksAsync()
@@ -133,6 +178,143 @@ namespace NOCREPORTGENERATOR.Services
             {
                 DbGate.Release();
             }
+        }
+
+        public static Task<IReadOnlyList<string>> GetSegmentPmOptionsFromWorkbookAsync(
+            string? filePath = null,
+            string password = "no",
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                var resolvedPath = ResolveSourcePath(filePath);
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                {
+                    return (IReadOnlyList<string>)Array.Empty<string>();
+                }
+
+                var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                using var stream = File.Open(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = ExcelReaderFactory.CreateReader(stream, new ExcelReaderConfiguration
+                {
+                    Password = password,
+                    FallbackEncoding = Encoding.GetEncoding(1252),
+                    LeaveOpen = false
+                });
+
+                do
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var sheetName = reader.Name ?? string.Empty;
+                    if (!IsTargetSheet(sheetName))
+                    {
+                        continue;
+                    }
+
+                    while (reader.Read())
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        // Column H (1-based) => index 7 (0-based)
+                        var text = reader.FieldCount > 7 ? reader.GetValue(7)?.ToString()?.Trim() ?? string.Empty : string.Empty;
+                        if (string.IsNullOrWhiteSpace(text) || string.Equals(text, "-", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        values.Add(text);
+                    }
+                }
+                while (reader.NextResult());
+
+                return (IReadOnlyList<string>)values
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            }, cancellationToken);
+        }
+
+        public static Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetSegmentPmByRouteFromWorkbookAsync(
+            string? filePath = null,
+            string password = "no",
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                var resolvedPath = ResolveSourcePath(filePath);
+                if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+                {
+                    return (IReadOnlyDictionary<string, IReadOnlyList<string>>)new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+                }
+
+                var map = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+                using var stream = File.Open(resolvedPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = ExcelReaderFactory.CreateReader(stream, new ExcelReaderConfiguration
+                {
+                    Password = password,
+                    FallbackEncoding = Encoding.GetEncoding(1252),
+                    LeaveOpen = false
+                });
+
+                do
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var sheetName = reader.Name ?? string.Empty;
+                    if (!IsTargetSheet(sheetName))
+                    {
+                        continue;
+                    }
+
+                    var rows = ReadAllRows(reader);
+                    if (rows.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var headerRow = GuessHeaderRow(rows);
+                    var headerMap = BuildHeaderMap(rows[headerRow]);
+                    var routeIndex = FindFirstIndexByPrefixes(headerMap, RoutePrefixes);
+                    if (!routeIndex.HasValue)
+                    {
+                        continue;
+                    }
+
+                    for (var rowIndex = headerRow + 1; rowIndex < rows.Count; rowIndex++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var row = rows[rowIndex];
+                        if (routeIndex.Value < 0 || routeIndex.Value >= row.Length)
+                        {
+                            continue;
+                        }
+
+                        var route = row[routeIndex.Value]?.Trim() ?? string.Empty;
+                        if (string.IsNullOrWhiteSpace(route) || string.Equals(route, "-", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        // Column H (1-based) => index 7 (0-based)
+                        var segmentPm = row.Length > 7 ? row[7]?.Trim() ?? string.Empty : string.Empty;
+                        if (string.IsNullOrWhiteSpace(segmentPm) || string.Equals(segmentPm, "-", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        if (!map.TryGetValue(route, out var values))
+                        {
+                            values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            map[route] = values;
+                        }
+
+                        values.Add(segmentPm);
+                    }
+                }
+                while (reader.NextResult());
+
+                return (IReadOnlyDictionary<string, IReadOnlyList<string>>)map.ToDictionary(
+                    x => x.Key,
+                    x => (IReadOnlyList<string>)x.Value.OrderBy(v => v, StringComparer.OrdinalIgnoreCase).ToList(),
+                    StringComparer.OrdinalIgnoreCase);
+            }, cancellationToken);
         }
 
         private static async Task SaveLinksAsync(List<SegmentLinkRecord> links, string sourcePath, CancellationToken cancellationToken)
@@ -233,8 +415,13 @@ namespace NOCREPORTGENERATOR.Services
 
         private static bool IsTargetSheet(string name)
         {
-            return name.Equals("Data_IOH Fiber Asset Master", StringComparison.OrdinalIgnoreCase) ||
-                   name.Equals("New Link", StringComparison.OrdinalIgnoreCase);
+            var normalized = NormalizeHeader(name);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                return false;
+            }
+
+            return SheetNameMustContainAny.Any(normalized.Contains);
         }
 
         private static List<string[]> ReadAllRows(IExcelDataReader reader)
@@ -257,15 +444,23 @@ namespace NOCREPORTGENERATOR.Services
 
         private static int GuessHeaderRow(List<string[]> rows)
         {
-            var maxScan = Math.Min(20, rows.Count);
+            var maxScan = Math.Min(40, rows.Count);
             var bestRow = 0;
-            var bestCount = -1;
+            var bestScore = int.MinValue;
             for (var r = 0; r < maxScan; r++)
             {
-                var count = rows[r].Count(x => !string.IsNullOrWhiteSpace(x));
-                if (count > bestCount)
+                var row = rows[r];
+                var nonEmptyCount = row.Count(x => !string.IsNullOrWhiteSpace(x));
+                var normalized = row
+                    .Select(NormalizeHeader)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .ToList();
+                var hintHit = normalized.Count(x => HeaderScoreHints.Any(h => x.StartsWith(h, StringComparison.OrdinalIgnoreCase)));
+                var score = (hintHit * 100) + nonEmptyCount;
+
+                if (score > bestScore)
                 {
-                    bestCount = count;
+                    bestScore = score;
                     bestRow = r;
                 }
             }
@@ -302,25 +497,22 @@ namespace NOCREPORTGENERATOR.Services
             string[] row,
             Dictionary<string, List<int>> map)
         {
-            var route = FirstNonEmpty(row,
-                FirstIndex(map, "routesegment2025"),
-                FirstIndex(map, "routesegment2024"),
-                FirstIndex(map, "routesegment"));
+            var route = FirstNonEmpty(row, FindFirstIndexByPrefixes(map, RoutePrefixes));
             if (string.IsNullOrWhiteSpace(route) || route == "-")
             {
                 yield break;
             }
 
-            var uniqueId = FirstNonEmpty(row, FirstIndex(map, "uniqueid"));
+            var uniqueId = FirstNonEmpty(row, FindFirstIndexByPrefixes(map, UniqueIdPrefixes));
 
-            var siteAIds = Indices(map, "siteida");
-            var siteANames = Indices(map, "sitenamea");
-            var longA = Indices(map, "longa");
-            var latA = Indices(map, "lata");
-            var siteBIds = Indices(map, "siteidb");
-            var siteBNames = Indices(map, "sitenameb");
-            var longB = Indices(map, "longb");
-            var latB = Indices(map, "latb");
+            var siteAIds = FindIndicesByPrefixes(map, SiteAIdPrefixes);
+            var siteANames = FindIndicesByPrefixes(map, SiteANamePrefixes);
+            var longA = FindIndicesByPrefixes(map, LonAPrefixes);
+            var latA = FindIndicesByPrefixes(map, LatAPrefixes);
+            var siteBIds = FindIndicesByPrefixes(map, SiteBIdPrefixes);
+            var siteBNames = FindIndicesByPrefixes(map, SiteBNamePrefixes);
+            var longB = FindIndicesByPrefixes(map, LonBPrefixes);
+            var latB = FindIndicesByPrefixes(map, LatBPrefixes);
 
             var max = new[] { siteAIds.Count, longA.Count, latA.Count, siteBIds.Count, longB.Count, latB.Count }.DefaultIfEmpty(0).Max();
             if (max <= 0)
@@ -404,14 +596,37 @@ namespace NOCREPORTGENERATOR.Services
             return double.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
         }
 
-        private static int? FirstIndex(Dictionary<string, List<int>> map, string key)
+        private static int? FindFirstIndexByPrefixes(Dictionary<string, List<int>> map, IReadOnlyList<string> prefixes)
         {
-            return map.TryGetValue(key, out var list) && list.Count > 0 ? list[0] : null;
+            var indices = FindIndicesByPrefixes(map, prefixes);
+            return indices.Count > 0 ? indices[0] : null;
         }
 
-        private static List<int> Indices(Dictionary<string, List<int>> map, string key)
+        private static List<int> FindIndicesByPrefixes(Dictionary<string, List<int>> map, IReadOnlyList<string> prefixes)
         {
-            return map.TryGetValue(key, out var list) ? list : new List<int>();
+            var output = new List<int>();
+            foreach (var prefix in prefixes)
+            {
+                CollectByPrefix(map, prefix, output);
+            }
+
+            return output
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
+        }
+
+        private static void CollectByPrefix(Dictionary<string, List<int>> map, string prefix, List<int> output)
+        {
+            foreach (var pair in map)
+            {
+                if (!pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                output.AddRange(pair.Value);
+            }
         }
 
         private static string FirstNonEmpty(string[] row, params int?[] indices)
@@ -435,12 +650,12 @@ namespace NOCREPORTGENERATOR.Services
 
         private static string ValueAt(string[] row, List<int> indices, int order)
         {
-            if (indices.Count == 0)
+            if (indices.Count == 0 || order < 0 || order >= indices.Count)
             {
                 return string.Empty;
             }
 
-            var idx = indices[Math.Min(order, indices.Count - 1)];
+            var idx = indices[order];
             if (idx < 0 || idx >= row.Length)
             {
                 return string.Empty;
@@ -511,6 +726,20 @@ namespace NOCREPORTGENERATOR.Services
             {
                 DbGate.Release();
             }
+        }
+
+        private sealed class ParsedImportLinks
+        {
+            public ParsedImportLinks(List<SegmentLinkRecord> links, int processedSheets, int processedRows)
+            {
+                Links = links;
+                ProcessedSheets = processedSheets;
+                ProcessedRows = processedRows;
+            }
+
+            public List<SegmentLinkRecord> Links { get; }
+            public int ProcessedSheets { get; }
+            public int ProcessedRows { get; }
         }
 
         public sealed class SegmentPmImportResult

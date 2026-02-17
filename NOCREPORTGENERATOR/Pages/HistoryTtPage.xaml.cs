@@ -9,6 +9,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
@@ -30,6 +31,8 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _viewOptionsInitialized;
         private bool _isImporting;
         private bool _isUpdatingAdvancedFilters;
+        private CancellationTokenSource? _viewRefreshCts;
+        private CancellationTokenSource? _searchDebounceCts;
 
         public HistoryTtPage()
         {
@@ -266,7 +269,7 @@ namespace NOCREPORTGENERATOR.Pages
                 _allHistoryItems = projected;
                 RefreshAdvancedFilterOptions();
                 _currentPage = 1;
-                RefreshCurrentView();
+                await RefreshCurrentViewAsync();
             }
             catch (Exception ex)
             {
@@ -350,7 +353,7 @@ namespace NOCREPORTGENERATOR.Pages
         private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             _currentPage = 1;
-            RefreshCurrentView();
+            DebounceRefreshCurrentView();
         }
 
         private void ClearSearchButton_Click(object sender, RoutedEventArgs e)
@@ -501,12 +504,151 @@ namespace NOCREPORTGENERATOR.Pages
 
         private void RefreshCurrentView()
         {
-            var keyword = SearchTextBox?.Text?.Trim() ?? string.Empty;
-            IEnumerable<HistoryTtItem> query = _allHistoryItems;
-            var statusFilter = GetStatusFilterValue();
-            var segmentFilter = GetSegmentFilterValue();
-            var fromDate = DispatchFromDatePicker?.Date?.Date;
-            var toDate = DispatchToDatePicker?.Date?.Date;
+            _ = RefreshCurrentViewAsync();
+        }
+
+        private void DebounceRefreshCurrentView(int delayMs = 180)
+        {
+            _searchDebounceCts?.Cancel();
+            _searchDebounceCts?.Dispose();
+            var cts = new CancellationTokenSource();
+            _searchDebounceCts = cts;
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(delayMs);
+                    if (cts.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    _ = DispatcherQueue.TryEnqueue(() =>
+                    {
+                        _ = RefreshCurrentViewAsync();
+                    });
+                }
+                finally
+                {
+                    if (ReferenceEquals(_searchDebounceCts, cts))
+                    {
+                        cts.Dispose();
+                        _searchDebounceCts = null;
+                    }
+                }
+            });
+        }
+
+        private async Task RefreshCurrentViewAsync()
+        {
+            var cts = new CancellationTokenSource();
+            var previous = Interlocked.Exchange(ref _viewRefreshCts, cts);
+            if (previous is not null)
+            {
+                try
+                {
+                    previous.Cancel();
+                }
+                catch
+                {
+                }
+                finally
+                {
+                    previous.Dispose();
+                }
+            }
+
+            try
+            {
+                var keyword = SearchTextBox?.Text?.Trim() ?? string.Empty;
+                var statusFilter = GetStatusFilterValue();
+                var segmentFilter = GetSegmentFilterValue();
+                var fromDate = DispatchFromDatePicker?.Date?.Date;
+                var toDate = DispatchToDatePicker?.Date?.Date;
+                var sort = SortComboBox?.SelectedItem as string ?? "Dispatch Terbaru";
+                var allSnapshot = _allHistoryItems.ToList();
+                var currentPageSnapshot = _currentPage;
+                var pageSizeSnapshot = _pageSize;
+                var token = cts.Token;
+
+                var prepared = await Task.Run(() =>
+                    PrepareHistoryView(
+                        allSnapshot,
+                        keyword,
+                        statusFilter,
+                        segmentFilter,
+                        fromDate,
+                        toDate,
+                        sort,
+                        currentPageSnapshot,
+                        pageSizeSnapshot,
+                        token));
+
+                if (prepared is null || token.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                _currentPage = prepared.CurrentPage;
+                _totalPages = prepared.TotalPages;
+                HistoryItems.Clear();
+                foreach (var item in prepared.PageItems)
+                {
+                    HistoryItems.Add(item);
+                }
+
+                SummaryTextBlock.Text =
+                    prepared.Start.ToString(CultureInfo.InvariantCulture) + "-" +
+                    prepared.End.ToString(CultureInfo.InvariantCulture) + " dari " +
+                    prepared.TotalFiltered.ToString(CultureInfo.InvariantCulture) +
+                    " data (total: " + prepared.TotalAll.ToString(CultureInfo.InvariantCulture) + ")";
+
+                KpiTotalTextBlock.Text = prepared.TotalAll.ToString(CultureInfo.InvariantCulture);
+                KpiFilteredTextBlock.Text = prepared.TotalFiltered.ToString(CultureInfo.InvariantCulture);
+                KpiOpenTextBlock.Text = prepared.TotalOpen.ToString(CultureInfo.InvariantCulture);
+                KpiSegmentTextBlock.Text = prepared.DistinctSegmentCount.ToString(CultureInfo.InvariantCulture);
+
+                PageInfoTextBlock.Text = "Page " + _currentPage.ToString(CultureInfo.InvariantCulture) + " / " + _totalPages.ToString(CultureInfo.InvariantCulture);
+                PrevPageButton.IsEnabled = _currentPage > 1;
+                NextPageButton.IsEnabled = _currentPage < _totalPages;
+                RenderPageButtons();
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                if (ReferenceEquals(_viewRefreshCts, cts))
+                {
+                    cts.Dispose();
+                    _viewRefreshCts = null;
+                }
+                else
+                {
+                    cts.Dispose();
+                }
+            }
+        }
+
+        private static HistoryViewPreparedData? PrepareHistoryView(
+            IReadOnlyList<HistoryTtItem> allItems,
+            string keyword,
+            string? statusFilter,
+            string? segmentFilter,
+            DateTime? fromDate,
+            DateTime? toDate,
+            string sort,
+            int currentPage,
+            int pageSize,
+            CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return null;
+            }
+
+            IEnumerable<HistoryTtItem> query = allItems;
 
             if (!string.IsNullOrWhiteSpace(statusFilter))
             {
@@ -549,7 +691,7 @@ namespace NOCREPORTGENERATOR.Pages
                     ContainsInsensitive(x.DispatchTime, keyword));
             }
 
-            query = (SortComboBox?.SelectedItem as string) switch
+            query = sort switch
             {
                 "Dispatch Terlama" => query.OrderBy(x => x.DispatchDateTimeValue),
                 "TT IOH A-Z" => query.OrderBy(x => x.TtIoh, StringComparer.OrdinalIgnoreCase),
@@ -561,44 +703,36 @@ namespace NOCREPORTGENERATOR.Pages
                 _ => query.OrderByDescending(x => x.DispatchDateTimeValue)
             };
 
-            var filtered = query.ToList();
-            var totalFiltered = filtered.Count;
-            _totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)_pageSize));
-            _currentPage = Math.Max(1, Math.Min(_currentPage, _totalPages));
-
-            var skip = (_currentPage - 1) * _pageSize;
-            var pageItems = filtered.Skip(skip).Take(_pageSize).ToList();
-
-            HistoryItems.Clear();
-            foreach (var item in pageItems)
+            if (cancellationToken.IsCancellationRequested)
             {
-                HistoryItems.Add(item);
+                return null;
             }
 
+            var filtered = query.ToList();
+            var totalFiltered = filtered.Count;
+            var totalPages = Math.Max(1, (int)Math.Ceiling(totalFiltered / (double)Math.Max(1, pageSize)));
+            var normalizedCurrentPage = Math.Max(1, Math.Min(currentPage, totalPages));
+            var skip = (normalizedCurrentPage - 1) * Math.Max(1, pageSize);
+            var pageItems = filtered.Skip(skip).Take(Math.Max(1, pageSize)).ToList();
             var start = totalFiltered == 0 ? 0 : skip + 1;
             var end = skip + pageItems.Count;
-            SummaryTextBlock.Text =
-                start.ToString(CultureInfo.InvariantCulture) + "-" +
-                end.ToString(CultureInfo.InvariantCulture) + " dari " +
-                totalFiltered.ToString(CultureInfo.InvariantCulture) +
-                " data (total: " + _allHistoryItems.Count.ToString(CultureInfo.InvariantCulture) + ")";
-
-            KpiTotalTextBlock.Text = _allHistoryItems.Count.ToString(CultureInfo.InvariantCulture);
-            KpiFilteredTextBlock.Text = totalFiltered.ToString(CultureInfo.InvariantCulture);
-            KpiOpenTextBlock.Text = _allHistoryItems.Count(x =>
-                ContainsInsensitive(x.StatusLink, "open") ||
-                ContainsInsensitive(x.StatusLink, "down")).ToString(CultureInfo.InvariantCulture);
-            KpiSegmentTextBlock.Text = _allHistoryItems
+            var totalOpen = allItems.Count(x => ContainsInsensitive(x.StatusLink, "open") || ContainsInsensitive(x.StatusLink, "down"));
+            var distinctSegmentCount = allItems
                 .Where(x => !string.IsNullOrWhiteSpace(x.SegmentRoute) && !string.Equals(x.SegmentRoute, "-", StringComparison.Ordinal))
                 .Select(x => x.SegmentRoute)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Count()
-                .ToString(CultureInfo.InvariantCulture);
+                .Count();
 
-            PageInfoTextBlock.Text = "Page " + _currentPage.ToString(CultureInfo.InvariantCulture) + " / " + _totalPages.ToString(CultureInfo.InvariantCulture);
-            PrevPageButton.IsEnabled = _currentPage > 1;
-            NextPageButton.IsEnabled = _currentPage < _totalPages;
-            RenderPageButtons();
+            return new HistoryViewPreparedData(
+                pageItems,
+                allItems.Count,
+                totalFiltered,
+                totalPages,
+                normalizedCurrentPage,
+                start,
+                end,
+                totalOpen,
+                distinctSegmentCount);
         }
 
         private void RenderPageButtons()
@@ -677,6 +811,41 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             return source.Contains(keyword, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private sealed class HistoryViewPreparedData
+        {
+            public HistoryViewPreparedData(
+                List<HistoryTtItem> pageItems,
+                int totalAll,
+                int totalFiltered,
+                int totalPages,
+                int currentPage,
+                int start,
+                int end,
+                int totalOpen,
+                int distinctSegmentCount)
+            {
+                PageItems = pageItems;
+                TotalAll = totalAll;
+                TotalFiltered = totalFiltered;
+                TotalPages = totalPages;
+                CurrentPage = currentPage;
+                Start = start;
+                End = end;
+                TotalOpen = totalOpen;
+                DistinctSegmentCount = distinctSegmentCount;
+            }
+
+            public List<HistoryTtItem> PageItems { get; }
+            public int TotalAll { get; }
+            public int TotalFiltered { get; }
+            public int TotalPages { get; }
+            public int CurrentPage { get; }
+            public int Start { get; }
+            public int End { get; }
+            public int TotalOpen { get; }
+            public int DistinctSegmentCount { get; }
         }
 
         public sealed class HistoryTtItem
