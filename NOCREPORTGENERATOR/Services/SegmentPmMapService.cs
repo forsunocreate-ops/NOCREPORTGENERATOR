@@ -406,11 +406,53 @@ namespace NOCREPORTGENERATOR.Services
             var candidates = new[]
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "SEGMENTPM.xlsx"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "File Source", "SEGMENTPM.xlsx"),
                 Path.Combine(AppContext.BaseDirectory, "SEGMENTPM.xlsx"),
-                Path.Combine(Environment.CurrentDirectory, "SEGMENTPM.xlsx")
+                Path.Combine(AppContext.BaseDirectory, "File Source", "SEGMENTPM.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "SEGMENTPM.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "File Source", "SEGMENTPM.xlsx")
             };
 
-            return candidates.FirstOrDefault(File.Exists) ?? string.Empty;
+            var exact = candidates.FirstOrDefault(File.Exists);
+            if (!string.IsNullOrWhiteSpace(exact))
+            {
+                return exact;
+            }
+
+            var searchRoots = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "File Source"),
+                AppContext.BaseDirectory,
+                Path.Combine(AppContext.BaseDirectory, "File Source"),
+                Environment.CurrentDirectory,
+                Path.Combine(Environment.CurrentDirectory, "File Source")
+            };
+            var patterns = new[]
+            {
+                "SEGMENTPM*.xlsx",
+                "*SEGMENTPM*.xlsx",
+                "SEGMENT PM*.xlsx",
+                "*SEGMENT PM*.xlsx",
+                "SEGMENTPM*.xlsm",
+                "*SEGMENTPM*.xlsm",
+                "SEGMENTPM*.xlsb",
+                "*SEGMENTPM*.xlsb"
+            };
+
+            var discovered = new List<string>();
+            foreach (var root in searchRoots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (var pattern in patterns)
+                {
+                    discovered.AddRange(Directory.GetFiles(root, pattern, SearchOption.TopDirectoryOnly));
+                }
+            }
+
+            return discovered
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .FirstOrDefault() ?? string.Empty;
         }
 
         private static bool IsTargetSheet(string name)

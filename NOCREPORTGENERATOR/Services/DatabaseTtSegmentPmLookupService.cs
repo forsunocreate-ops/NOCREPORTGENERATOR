@@ -19,6 +19,7 @@ namespace NOCREPORTGENERATOR.Services
         private static Task<IReadOnlyDictionary<string, string>>? _cacheTask;
         private static string _cachePath = string.Empty;
         private static IReadOnlyList<string>? _segmentPmOptionsCache;
+        private static IReadOnlyDictionary<string, string>? _segmentPmCanonicalPairCache;
         private static readonly Regex TtIohRegex = new(
             @"INC\W*(?<a>\d{8})\W*(?<b>\d{8})",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -28,10 +29,14 @@ namespace NOCREPORTGENERATOR.Services
             \s*(?:[:=\-\)\]\>]\s*|\s+)
             (?<value>[^\r\n,;|]+)",
             RegexOptions.Compiled);
+        private static readonly Regex SegmentPmHintRegex = new(
+            @"(?ix)\b(?:tt\s*pm\s*segment|segment\s*tt\s*pm|segment\s*pm)\b",
+            RegexOptions.Compiled);
         private static readonly Regex DateLikeRegex = new(
             @"\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b",
             RegexOptions.Compiled);
         private static readonly Regex NumericRoutePairRegex = new(@"^\s*(?<a>\d{5,8})\s*[-/]\s*(?<b>\d{5,8})\s*$", RegexOptions.Compiled);
+        private static readonly Regex NumericRoutePairSearchRegex = new(@"(?<a>\d{5,8})\s*[-/]\s*(?<b>\d{5,8})", RegexOptions.Compiled);
 
         public static void InvalidateCache()
         {
@@ -40,6 +45,7 @@ namespace NOCREPORTGENERATOR.Services
                 _cacheTask = null;
                 _cachePath = string.Empty;
                 _segmentPmOptionsCache = null;
+                _segmentPmCanonicalPairCache = null;
             }
         }
 
@@ -76,28 +82,73 @@ namespace NOCREPORTGENERATOR.Services
 
         public static string ExtractSegmentPmFromProgress(string? progressText)
         {
-            var source = progressText?.Trim() ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(source))
+            return ResolveSegmentPm(progressText, string.Empty);
+        }
+
+        public static string ResolveSegmentPm(string? progressText, string? segmentRouteText)
+        {
+            var progress = progressText?.Trim() ?? string.Empty;
+            var route = segmentRouteText?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(progress) && string.IsNullOrWhiteSpace(route))
             {
                 return string.Empty;
             }
 
-            // Prioritas 1: lookup ketat terhadap daftar segment PM kolom H SEGMENTPM.xlsx.
             var options = GetSegmentPmOptionsSafe();
-            var matchedByLookup = TryMatchFromKnownOptions(source, options);
+            var canonicalMap = GetSegmentPmCanonicalPairSafe(options);
+
+            var matchedByLookup = TryMatchFromKnownOptions(progress, options);
             if (!string.IsNullOrWhiteSpace(matchedByLookup))
             {
                 return matchedByLookup;
             }
 
-            // Prioritas 2: fallback regex untuk kasus teks progress tidak baku.
-            var match = SegmentPmRegex.Match(source);
-            if (!match.Success)
+            var match = SegmentPmRegex.Match(progress);
+            if (match.Success)
+            {
+                var candidate = NormalizeSegmentPmValue(match.Groups["value"].Value);
+                if (!string.IsNullOrWhiteSpace(candidate))
+                {
+                    var matchedFromCandidate = TryMatchFromKnownOptions(candidate, options);
+                    if (!string.IsNullOrWhiteSpace(matchedFromCandidate))
+                    {
+                        return matchedFromCandidate;
+                    }
+                }
+            }
+
+            var matchedProgressPair = TryMatchByRoutePairToken(progress, canonicalMap);
+            if (!string.IsNullOrWhiteSpace(matchedProgressPair))
+            {
+                return matchedProgressPair;
+            }
+
+            if (!string.IsNullOrWhiteSpace(route))
+            {
+                var matchedRoutePair = TryMatchByRoutePairToken(route, canonicalMap);
+                if (!string.IsNullOrWhiteSpace(matchedRoutePair))
+                {
+                    return matchedRoutePair;
+                }
+            }
+
+            var progressHasSegmentPmHint = SegmentPmHintRegex.IsMatch(progress);
+            if (!progressHasSegmentPmHint && string.IsNullOrWhiteSpace(route))
             {
                 return string.Empty;
             }
 
-            return NormalizeSegmentPmValue(match.Groups["value"].Value);
+            var progressPairKey = TryExtractCanonicalPairKey(progress);
+            var routePairKey = TryExtractCanonicalPairKey(route);
+            if (!string.IsNullOrWhiteSpace(progressPairKey) &&
+                !string.IsNullOrWhiteSpace(routePairKey) &&
+                string.Equals(progressPairKey, routePairKey, StringComparison.OrdinalIgnoreCase) &&
+                canonicalMap.TryGetValue(progressPairKey, out var canonicalMatch))
+            {
+                return canonicalMatch;
+            }
+
+            return string.Empty;
         }
 
         private static IReadOnlyDictionary<string, string> BuildMapInternal(string path, CancellationToken cancellationToken)
@@ -119,21 +170,16 @@ namespace NOCREPORTGENERATOR.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var progress = reader.FieldCount > ColProgress ? reader.GetValue(ColProgress)?.ToString() ?? string.Empty : string.Empty;
-                    if (string.IsNullOrWhiteSpace(progress))
-                    {
-                        continue;
-                    }
-
                     var tt = ResolveTtIohFromRow(reader, progress);
                     if (string.IsNullOrWhiteSpace(tt))
                     {
                         continue;
                     }
 
-                    var segmentPm = ExtractSegmentPmFromProgress(progress);
+                    var route = reader.FieldCount > ColSegmentRoute ? reader.GetValue(ColSegmentRoute)?.ToString() ?? string.Empty : string.Empty;
+                    var segmentPm = ResolveSegmentPm(progress, route);
                     if (string.IsNullOrWhiteSpace(segmentPm))
                     {
-                        var route = reader.FieldCount > ColSegmentRoute ? reader.GetValue(ColSegmentRoute)?.ToString() ?? string.Empty : string.Empty;
                         segmentPm = ResolveSegmentPmFromRoute(route, segmentPmByRoute);
                     }
 
@@ -290,6 +336,38 @@ namespace NOCREPORTGENERATOR.Services
             return text;
         }
 
+        private static string TryMatchByRoutePairToken(
+            string source,
+            IReadOnlyDictionary<string, string> canonicalMap)
+        {
+            if (string.IsNullOrWhiteSpace(source) || canonicalMap.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            foreach (Match match in NumericRoutePairSearchRegex.Matches(source))
+            {
+                if (!match.Success)
+                {
+                    continue;
+                }
+
+                var candidate = match.Groups["a"].Value + "-" + match.Groups["b"].Value;
+                var key = BuildCanonicalPairKey(candidate);
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                if (canonicalMap.TryGetValue(key, out var mapped))
+                {
+                    return mapped;
+                }
+            }
+
+            return string.Empty;
+        }
+
         private static string TryMatchFromKnownOptions(string source, IReadOnlyList<string> options)
         {
             if (options.Count == 0)
@@ -391,6 +469,87 @@ namespace NOCREPORTGENERATOR.Services
             }
         }
 
+        private static IReadOnlyDictionary<string, string> GetSegmentPmCanonicalPairSafe(IReadOnlyList<string> options)
+        {
+            lock (Sync)
+            {
+                if (_segmentPmCanonicalPairCache is not null)
+                {
+                    return _segmentPmCanonicalPairCache;
+                }
+            }
+
+            var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var option in options)
+            {
+                var clean = option?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(clean))
+                {
+                    continue;
+                }
+
+                var key = TryExtractCanonicalPairKey(clean);
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                if (!map.ContainsKey(key))
+                {
+                    map[key] = clean;
+                }
+            }
+
+            lock (Sync)
+            {
+                _segmentPmCanonicalPairCache = map;
+            }
+
+            return map;
+        }
+
+        private static string TryExtractCanonicalPairKey(string? source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return string.Empty;
+            }
+
+            var match = NumericRoutePairSearchRegex.Match(source);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            var pair = match.Groups["a"].Value + "-" + match.Groups["b"].Value;
+            return BuildCanonicalPairKey(pair);
+        }
+
+        private static string BuildCanonicalPairKey(string pairText)
+        {
+            var match = NumericRoutePairRegex.Match(pairText ?? string.Empty);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            var left = match.Groups["a"].Value;
+            var right = match.Groups["b"].Value;
+            return CompareNumericToken(left, right) >= 0
+                ? left + "|" + right
+                : right + "|" + left;
+        }
+
+        private static int CompareNumericToken(string a, string b)
+        {
+            if (a.Length != b.Length)
+            {
+                return a.Length.CompareTo(b.Length);
+            }
+
+            return string.Compare(a, b, StringComparison.Ordinal);
+        }
+
         private static string ResolvePath(string? inputPath)
         {
             if (!string.IsNullOrWhiteSpace(inputPath) && File.Exists(inputPath))
@@ -401,8 +560,11 @@ namespace NOCREPORTGENERATOR.Services
             var candidates = new[]
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "File Source", "DATABASE_TT.xlsx"),
                 Path.Combine(AppContext.BaseDirectory, "DATABASE_TT.xlsx"),
-                Path.Combine(Environment.CurrentDirectory, "DATABASE_TT.xlsx")
+                Path.Combine(AppContext.BaseDirectory, "File Source", "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "File Source", "DATABASE_TT.xlsx")
             };
 
             return candidates.FirstOrDefault(File.Exists) ?? string.Empty;

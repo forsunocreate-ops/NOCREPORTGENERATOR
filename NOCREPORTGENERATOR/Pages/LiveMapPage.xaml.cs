@@ -27,6 +27,7 @@ namespace NOCREPORTGENERATOR.Pages
         private static readonly Regex TitleRegex = new(@"\[(?<status>[^-\]]+)\s*-\s*(?<severity>[^\]]+)\]", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex TtIohNormalizeRegex = new(@"INC\W*(\d{8})\W*(\d{8})", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private static readonly Regex SegmentIdPairRegex = new(@"\b\d{5,8}\s*[-/]\s*\d{5,8}\b", RegexOptions.Compiled);
+        private static readonly Regex SegmentIdPairStrictRegex = new(@"^\s*(?<a>\d{5,8})\s*[-/]\s*(?<b>\d{5,8})\s*$", RegexOptions.Compiled);
         private static readonly Regex DateLikeRegex = new(@"\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\b", RegexOptions.Compiled);
         private static readonly JsonSerializerOptions JsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
         private static readonly string[] SmartKeywords = { "tt:", "seg:", "spm:", "cp:", "from:", "to:", "date:", "status:", "sev:" };
@@ -57,7 +58,10 @@ namespace NOCREPORTGENERATOR.Pages
         private List<MapPoint> _last = new();
         private List<SegmentPmMapService.SegmentSiteLinkPoint> _siteLinks = new();
         private Dictionary<string, IReadOnlyList<string>> _segmentPmByRoute = new(StringComparer.OrdinalIgnoreCase);
+        private List<string> _segmentRouteFilterOptions = new();
+        private List<string> _segmentPmFilterOptions = new();
         private List<string> _knownSegmentPmOptions = new();
+        private string _segmentPmSourcePath = string.Empty;
         private CancellationTokenSource? _renderCts;
         private CancellationTokenSource? _smartFilterDebounceCts;
         private CancellationTokenSource? _snapshotSaveDebounceCts;
@@ -69,6 +73,10 @@ namespace NOCREPORTGENERATOR.Pages
         {
             InitializeComponent();
             NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
+            EditableComboBoxContainsFilterHelper.Attach(
+                SegmentRouteFilterComboBox,
+                () => _segmentRouteFilterOptions,
+                AllSegmentOption);
             LocalFormStorageService.RecordsChanged += LocalFormStorageService_RecordsChanged;
             InitializeOverlaySearchAutoHide();
             Loaded += LiveMapPage_Loaded;
@@ -359,10 +367,16 @@ namespace NOCREPORTGENERATOR.Pages
                 var lookup = await DatabaseLinkLookupService.FindSegmentLookupBySystemKeyAsync(string.Empty);
                 var items = new List<string> { AllSegmentOption };
                 items.AddRange(lookup.Segments);
+                _segmentRouteFilterOptions = items
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
                 SegmentRouteFilterComboBox.ItemsSource = items;
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentRouteFilterComboBox);
             }
             catch
             {
+                _segmentRouteFilterOptions = new List<string> { AllSegmentOption };
                 SegmentRouteFilterComboBox.ItemsSource = new[] { AllSegmentOption };
             }
             finally
@@ -384,7 +398,9 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     try
                     {
-                        var map = await SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(password: "no");
+                        var map = await SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(
+                            filePath: string.IsNullOrWhiteSpace(_segmentPmSourcePath) ? null : _segmentPmSourcePath,
+                            password: "no");
                         _segmentPmByRoute = map.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
                     }
                     catch
@@ -393,7 +409,20 @@ namespace NOCREPORTGENERATOR.Pages
                     }
                 }
 
+                IReadOnlyList<string> optionsFromWorkbook;
+                try
+                {
+                    optionsFromWorkbook = await SegmentPmMapService.GetSegmentPmOptionsFromWorkbookAsync(
+                        filePath: string.IsNullOrWhiteSpace(_segmentPmSourcePath) ? null : _segmentPmSourcePath,
+                        password: "no");
+                }
+                catch
+                {
+                    optionsFromWorkbook = Array.Empty<string>();
+                }
+
                 var items = new List<string> { AllSegmentPmOption };
+                items.AddRange(optionsFromWorkbook);
                 items.AddRange(_segmentPmByRoute.Values.SelectMany(x => x));
                 _knownSegmentPmOptions = items
                     .Where(x => !string.IsNullOrWhiteSpace(x) && !string.Equals(x, AllSegmentPmOption, StringComparison.OrdinalIgnoreCase))
@@ -408,8 +437,8 @@ namespace NOCREPORTGENERATOR.Pages
                     .Prepend(AllSegmentPmOption)
                     .ToList();
 
-                SegmentPmFilterComboBox.ItemsSource = items;
-                SegmentPmFilterComboBox.SelectedIndex = 0;
+                _segmentPmFilterOptions = items;
+                SegmentPmFilterAutoSuggestBox.Text = AllSegmentPmOption;
             }
             finally
             {
@@ -427,7 +456,9 @@ namespace NOCREPORTGENERATOR.Pages
                 return;
             }
 
-            var current = (SegmentPmFilterComboBox.ItemsSource as IEnumerable<string>) ?? new[] { AllSegmentPmOption };
+            IEnumerable<string> current = _segmentPmFilterOptions.Count == 0
+                ? new[] { AllSegmentPmOption }
+                : _segmentPmFilterOptions;
             var merged = current
                 .Concat(points.Select(x => x.SegmentPm))
                 .Where(x => !string.IsNullOrWhiteSpace(x) && !string.Equals(x, "-", StringComparison.Ordinal))
@@ -447,17 +478,12 @@ namespace NOCREPORTGENERATOR.Pages
                     .ToList();
             }
 
-            var selected = SegmentPmFilterComboBox.SelectedItem as string;
-            _suppressFilterEvents = true;
-            try
+            _segmentPmFilterOptions = merged;
+            var selected = SegmentPmFilterAutoSuggestBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(selected) ||
+                !merged.Any(x => string.Equals(x, selected, StringComparison.OrdinalIgnoreCase)))
             {
-                SegmentPmFilterComboBox.ItemsSource = merged;
-                SegmentPmFilterComboBox.SelectedItem = merged.FirstOrDefault(x =>
-                    string.Equals(x, selected, StringComparison.OrdinalIgnoreCase)) ?? AllSegmentPmOption;
-            }
-            finally
-            {
-                _suppressFilterEvents = false;
+                SegmentPmFilterAutoSuggestBox.Text = AllSegmentPmOption;
             }
         }
 
@@ -484,7 +510,8 @@ namespace NOCREPORTGENERATOR.Pages
             var idPairMatch = SegmentIdPairRegex.Match(text);
             if (idPairMatch.Success)
             {
-                return idPairMatch.Value.Replace("/", "-", StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
+                var pair = idPairMatch.Value.Replace("/", "-", StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
+                return CanonicalizeSegmentPmPair(pair);
             }
 
             var hardSplitIndex = text.IndexOf('&');
@@ -498,7 +525,8 @@ namespace NOCREPORTGENERATOR.Pages
                 text = text[..^1].TrimEnd();
             }
 
-            return text;
+            var normalizedByLookup = TryMatchKnownSegmentPm(text);
+            return string.IsNullOrWhiteSpace(normalizedByLookup) ? string.Empty : normalizedByLookup;
         }
 
         private string TryMatchKnownSegmentPm(string source)
@@ -590,6 +618,7 @@ namespace NOCREPORTGENERATOR.Pages
                         .Prepend(AllSegmentOption)                        .ToList();
                 }
 
+                _segmentRouteFilterOptions = merged.ToList();
                 var selected = SegmentRouteFilterComboBox.SelectedItem as string;
                 _suppressFilterEvents = true;
                 try
@@ -602,6 +631,8 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     _suppressFilterEvents = false;
                 }
+
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentRouteFilterComboBox);
             }
             catch (Exception ex)
             {
@@ -1068,7 +1099,65 @@ namespace NOCREPORTGENERATOR.Pages
         }
 
         private string? GetSegment() => SegmentRouteFilterComboBox.SelectedItem as string ?? SegmentRouteFilterComboBox.Text;
-        private string? GetSegmentPm() => SegmentPmFilterComboBox.SelectedItem as string ?? SegmentPmFilterComboBox.Text;
+        private string? GetSegmentPm()
+        {
+            var text = SegmentPmFilterAutoSuggestBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(text) ||
+                string.Equals(text, AllSegmentPmOption, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return text;
+        }
+
+        private string CanonicalizeSegmentPmPair(string pair)
+        {
+            var normalized = (pair ?? string.Empty).Replace("/", "-", StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal);
+            var parts = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length != 2)
+            {
+                return normalized;
+            }
+
+            var left = parts[0];
+            var right = parts[1];
+            if (!left.All(char.IsDigit) || !right.All(char.IsDigit))
+            {
+                return normalized;
+            }
+
+            var direct = left + "-" + right;
+            var reversed = right + "-" + left;
+
+            var directExists = _knownSegmentPmOptions.Any(x =>
+                string.Equals(
+                    x?.Replace("/", "-", StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal),
+                    direct,
+                    StringComparison.OrdinalIgnoreCase));
+            var reversedExists = _knownSegmentPmOptions.Any(x =>
+                string.Equals(
+                    x?.Replace("/", "-", StringComparison.Ordinal).Replace(" ", string.Empty, StringComparison.Ordinal),
+                    reversed,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (reversedExists && !directExists)
+            {
+                return reversed;
+            }
+
+            if (directExists)
+            {
+                return direct;
+            }
+
+            if (reversedExists)
+            {
+                return reversed;
+            }
+
+            return string.Empty;
+        }
         private string? GetStatus() => StatusFilterComboBox.SelectedItem as string is string s && !s.Equals(AllStatusOption, StringComparison.OrdinalIgnoreCase) ? s : null;
         private string? GetSeverity() => SeverityFilterComboBox.SelectedItem as string is string s && !s.Equals(AllSeverityOption, StringComparison.OrdinalIgnoreCase) ? s : null;
         private static bool HasSpecificSegmentPm(string? value) =>
@@ -1085,11 +1174,15 @@ namespace NOCREPORTGENERATOR.Pages
             IEnumerable<SegmentPmMapService.SegmentSiteLinkPoint> q = src;
             if (!string.IsNullOrWhiteSpace(segment) && !segment.Equals(AllSegmentOption, StringComparison.OrdinalIgnoreCase))
             {
-                q = q.Where(x => Contains(x.RouteSegment, segment));
+                var segmentPairKey = TryCanonicalSegmentPairKey(segment);
+                q = string.IsNullOrWhiteSpace(segmentPairKey)
+                    ? q.Where(x => Contains(x.RouteSegment, segment))
+                    : q.Where(x => string.Equals(TryCanonicalSegmentPairKey(x.RouteSegment), segmentPairKey, StringComparison.OrdinalIgnoreCase));
             }
             if (HasSpecificSegmentPm(segmentPm))
             {
-                q = q.Where(x => RouteHasSegmentPm(x.RouteSegment, segmentPm!, segmentPmByRoute));
+                var segmentPmPairKey = TryCanonicalSegmentPairKey(segmentPm);
+                q = q.Where(x => RouteHasSegmentPm(x.RouteSegment, segmentPm!, segmentPmByRoute, segmentPmPairKey));
             }
 
             var text = (query ?? string.Empty).Trim();
@@ -1134,22 +1227,56 @@ namespace NOCREPORTGENERATOR.Pages
         private static bool RouteHasSegmentPm(
             string? routeSegment,
             string segmentPm,
-            IReadOnlyDictionary<string, IReadOnlyList<string>> segmentPmByRoute)
+            IReadOnlyDictionary<string, IReadOnlyList<string>> segmentPmByRoute,
+            string? segmentPmPairKey = null)
         {
             if (string.IsNullOrWhiteSpace(routeSegment) || string.IsNullOrWhiteSpace(segmentPm))
             {
                 return false;
             }
 
-            return segmentPmByRoute.TryGetValue(routeSegment, out var values) &&
-                values.Any(x => string.Equals(x, segmentPm, StringComparison.OrdinalIgnoreCase));
+            if (!segmentPmByRoute.TryGetValue(routeSegment, out var values))
+            {
+                return false;
+            }
+
+            if (values.Any(x => string.Equals(x, segmentPm, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(segmentPmPairKey))
+            {
+                return false;
+            }
+
+            return values.Any(x =>
+                string.Equals(TryCanonicalSegmentPairKey(x), segmentPmPairKey, StringComparison.OrdinalIgnoreCase));
         }
 
         private static List<MapPoint> FilterPoints(IReadOnlyList<MapPoint> src, string? query, string? quick, string? segment, string? segmentPm, DateTimeOffset? from, DateTimeOffset? to, string? status, string? severity)
         {
             IEnumerable<MapPoint> q = src;
-            if (!string.IsNullOrWhiteSpace(segment) && !segment.Equals(AllSegmentOption, StringComparison.OrdinalIgnoreCase)) q = q.Where(x => Contains(x.SegmentRoute, segment));
-            if (HasSpecificSegmentPm(segmentPm)) q = q.Where(x => Contains(x.SegmentPm, segmentPm!));
+            if (!string.IsNullOrWhiteSpace(segment) && !segment.Equals(AllSegmentOption, StringComparison.OrdinalIgnoreCase))
+            {
+                var segmentPairKey = TryCanonicalSegmentPairKey(segment);
+                q = string.IsNullOrWhiteSpace(segmentPairKey)
+                    ? q.Where(x => Contains(x.SegmentRoute, segment))
+                    : q.Where(x =>
+                        string.Equals(TryCanonicalSegmentPairKey(x.SegmentRoute), segmentPairKey, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(TryCanonicalSegmentPairKey(x.SegmentPm), segmentPairKey, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (HasSpecificSegmentPm(segmentPm))
+            {
+                var segmentPmPairKey = TryCanonicalSegmentPairKey(segmentPm);
+                q = string.IsNullOrWhiteSpace(segmentPmPairKey)
+                    ? q.Where(x => Contains(x.SegmentPm, segmentPm!))
+                    : q.Where(x =>
+                        string.Equals(TryCanonicalSegmentPairKey(x.SegmentPm), segmentPmPairKey, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(TryCanonicalSegmentPairKey(x.SegmentRoute), segmentPmPairKey, StringComparison.OrdinalIgnoreCase));
+            }
+
             if (!string.IsNullOrWhiteSpace(status)) q = q.Where(x => Contains(x.Status, status));
             if (!string.IsNullOrWhiteSpace(severity)) q = q.Where(x => Contains(x.Severity, severity));
             var today = DateTimeOffset.Now.Date;
@@ -1173,8 +1300,8 @@ namespace NOCREPORTGENERATOR.Pages
                 q = k switch
                 {
                     "tt" => q.Where(x => Contains(x.TtIoh, v)),
-                    "seg" => q.Where(x => Contains(x.SegmentRoute, v)),
-                    "spm" => q.Where(x => Contains(x.SegmentPm, v)),
+                    "seg" => ApplySegmentValueFilter(q, v, preferRoute: true),
+                    "spm" => ApplySegmentValueFilter(q, v, preferRoute: false),
                     "cp" => q.Where(x => Contains(x.CutPoint, v)),
                     "status" => q.Where(x => Contains(x.Status, v)),
                     "sev" => q.Where(x => Contains(x.Severity, v)),
@@ -1185,6 +1312,21 @@ namespace NOCREPORTGENERATOR.Pages
                 };
             }
             return q.ToList();
+        }
+
+        private static IEnumerable<MapPoint> ApplySegmentValueFilter(IEnumerable<MapPoint> source, string value, bool preferRoute)
+        {
+            var pairKey = TryCanonicalSegmentPairKey(value);
+            if (string.IsNullOrWhiteSpace(pairKey))
+            {
+                return preferRoute
+                    ? source.Where(x => Contains(x.SegmentRoute, value))
+                    : source.Where(x => Contains(x.SegmentPm, value));
+            }
+
+            return source.Where(x =>
+                string.Equals(TryCanonicalSegmentPairKey(x.SegmentRoute), pairKey, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(TryCanonicalSegmentPairKey(x.SegmentPm), pairKey, StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool TryParseDate(string value, out DateTimeOffset parsed)
@@ -1272,6 +1414,42 @@ namespace NOCREPORTGENERATOR.Pages
             return Regex.Replace(value.Trim(), @"\s+", " ").ToUpperInvariant();
         }
 
+        private static string TryCanonicalSegmentPairKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var match = SegmentIdPairRegex.Match(value);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            var strict = SegmentIdPairStrictRegex.Match(match.Value);
+            if (!strict.Success)
+            {
+                return string.Empty;
+            }
+
+            var left = strict.Groups["a"].Value;
+            var right = strict.Groups["b"].Value;
+            return CompareNumericSegmentId(left, right) >= 0
+                ? left + "|" + right
+                : right + "|" + left;
+        }
+
+        private static int CompareNumericSegmentId(string left, string right)
+        {
+            if (left.Length != right.Length)
+            {
+                return left.Length.CompareTo(right.Length);
+            }
+
+            return string.Compare(left, right, StringComparison.Ordinal);
+        }
+
         private List<string> BuildSmartSuggestions(string? text)
         {
             var input = (text ?? string.Empty).Trim();
@@ -1280,7 +1458,7 @@ namespace NOCREPORTGENERATOR.Pages
             var head = idx >= 0 ? input[..(idx + 1)] : string.Empty;
             var token = idx >= 0 ? input[(idx + 1)..] : input;
             var c = token.IndexOf(':');
-            if (c <= 0) return SmartKeywords.Where(k => k.StartsWith(token, StringComparison.OrdinalIgnoreCase) || token.Length <= 1).Select(k => head + k).Take(12).ToList();
+            if (c <= 0) return SmartKeywords.Where(k => k.Contains(token, StringComparison.OrdinalIgnoreCase) || token.Length <= 1).Select(k => head + k).Take(12).ToList();
             var key = token[..c].Trim().ToLowerInvariant();
             var val = token[(c + 1)..].Trim();
             IEnumerable<string> vals = key switch
@@ -1809,9 +1987,65 @@ namespace NOCREPORTGENERATOR.Pages
             SmartFilterAutoSuggestBox.Text = sender.Text;
             await ApplySmartFilterAsync();
         }
+        private void SegmentPmFilterAutoSuggestBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is not AutoSuggestBox autoSuggest)
+            {
+                return;
+            }
+
+            autoSuggest.ItemsSource = BuildSegmentPmSuggestions(string.Empty);
+            autoSuggest.IsSuggestionListOpen = true;
+        }
+        private void SegmentPmFilterAutoSuggestBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+            {
+                sender.ItemsSource = BuildSegmentPmSuggestions(sender.Text);
+                DebounceSmartFilterApply();
+            }
+        }
+        private async void SegmentPmFilterAutoSuggestBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            if (args.ChosenSuggestion is string chosen && !string.IsNullOrWhiteSpace(chosen))
+            {
+                sender.Text = chosen;
+            }
+
+            if (string.IsNullOrWhiteSpace(sender.Text))
+            {
+                sender.Text = AllSegmentPmOption;
+            }
+
+            await ApplySmartFilterAsync();
+        }
+        private async void SegmentPmFilterAutoSuggestBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+        {
+            if (args.SelectedItem is string selected && !string.IsNullOrWhiteSpace(selected))
+            {
+                sender.Text = selected;
+            }
+
+            await ApplySmartFilterAsync();
+        }
+        private List<string> BuildSegmentPmSuggestions(string? text)
+        {
+            var source = _segmentPmFilterOptions.Count == 0
+                ? new List<string> { AllSegmentPmOption }
+                : _segmentPmFilterOptions;
+            var keyword = (text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return source.Take(250).ToList();
+            }
+
+            return source
+                .Where(x => !string.IsNullOrWhiteSpace(x) && x.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                .Take(250)
+                .ToList();
+        }
         private async void QuickFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
         private async void SegmentRouteFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
-        private async void SegmentPmFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
         private void CompactFilterModeCheckBox_Checked(object sender, RoutedEventArgs e) => ApplyCompactFilterMode(CompactFilterModeCheckBox.IsChecked == true);
         private async void ApplyFilterButton_Click(object sender, RoutedEventArgs e) => await ApplySmartFilterAsync();
         private async void FromDatePicker_DateChanged(object sender, CalendarDatePickerDateChangedEventArgs args) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
@@ -1867,7 +2101,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 SetSmartQueryText(string.Empty);
                 SegmentRouteFilterComboBox.SelectedIndex = 0;
-                SegmentPmFilterComboBox.SelectedIndex = 0;
+                SegmentPmFilterAutoSuggestBox.Text = AllSegmentPmOption;
                 QuickFilterComboBox.SelectedIndex = 0;
                 StatusFilterComboBox.SelectedIndex = 0;
                 SeverityFilterComboBox.SelectedIndex = 0;
@@ -1909,9 +2143,35 @@ namespace NOCREPORTGENERATOR.Pages
         {
             try
             {
+                if (App.MainAppWindow is null)
+                {
+                    return;
+                }
+
                 ImportSegmentPmButton.IsEnabled = false;
+                MapFilterSummaryTextBlock.Text = "Pilih file SEGMENTPM untuk diimpor...";
+
+                var picker = new FileOpenPicker();
+                picker.FileTypeFilter.Add(".xlsx");
+                picker.FileTypeFilter.Add(".xlsm");
+                picker.FileTypeFilter.Add(".xlsb");
+                picker.SuggestedStartLocation = PickerLocationId.Downloads;
+                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(App.MainAppWindow));
+
+                var file = await picker.PickSingleFileAsync();
+                if (file is null)
+                {
+                    MapFilterSummaryTextBlock.Text = "Import SEGMENTPM dibatalkan.";
+                    return;
+                }
+
+                _segmentPmSourcePath = file.Path;
                 MapFilterSummaryTextBlock.Text = "Mengimpor SEGMENTPM ke SQL cache...";
-                var result = await SegmentPmMapService.ImportFromWorkbookAsync(password: "no");
+                var result = await SegmentPmMapService.ImportFromWorkbookAsync(filePath: file.Path, password: "no");
+                _segmentPmByRoute = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+                _segmentPmReady = false;
+                await EnsureSegmentPmFilterOptionsAsync();
+                MergeSegmentPmOptionsFromPoints(_all);
                 await LoadSiteLinksAsync();
                 await ApplySmartFilterAsync();
                 MapFilterSummaryTextBlock.Text =
@@ -2009,4 +2269,6 @@ namespace NOCREPORTGENERATOR.Pages
         }
     }
 }
+
+
 

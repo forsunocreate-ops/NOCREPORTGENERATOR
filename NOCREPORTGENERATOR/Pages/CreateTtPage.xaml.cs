@@ -72,6 +72,7 @@ namespace NOCREPORTGENERATOR.Pages
         {
             InitializeComponent();
             NavigationCacheMode = NavigationCacheMode.Required;
+            EditableComboBoxContainsFilterHelper.Attach(SegmentPmComboBox, () => _segmentPmOptions);
 
             var now = DateTimeOffset.Now;
             OccurTimeTextBox.Text = FormatDateTime(now);
@@ -2550,6 +2551,8 @@ namespace NOCREPORTGENERATOR.Pages
                 _segmentPmBySegmentRoute = map.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
                 SegmentPmComboBox.ItemsSource = _segmentPmOptions;
                 _segmentPmOptionsLoaded = true;
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentPmComboBox);
+                UpdateSegmentPmManualHint();
             }
             catch (Exception ex)
             {
@@ -2558,6 +2561,8 @@ namespace NOCREPORTGENERATOR.Pages
                 _segmentPmBySegmentRoute = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
                 SegmentPmComboBox.ItemsSource = _segmentPmOptions;
                 _segmentPmOptionsLoaded = true;
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentPmComboBox);
+                UpdateSegmentPmManualHint();
             }
         }
 
@@ -2579,6 +2584,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 SegmentPmComboBox.SelectedItem = null;
                 SegmentPmComboBox.Text = string.Empty;
+                UpdateSegmentPmManualHint();
                 return;
             }
 
@@ -2599,6 +2605,8 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             SegmentPmComboBox.Text = text;
+            EditableComboBoxContainsFilterHelper.Refresh(SegmentPmComboBox);
+            UpdateSegmentPmManualHint();
         }
 
         private void SegmentPmComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -2608,6 +2616,7 @@ namespace NOCREPORTGENERATOR.Pages
                 return;
             }
 
+            UpdateSegmentPmManualHint();
             UpdateTemplatePreview();
             MarkActiveTabDirty();
         }
@@ -2625,6 +2634,7 @@ namespace NOCREPORTGENERATOR.Pages
                 ApplySegmentPmSelection(text);
             }
 
+            UpdateSegmentPmManualHint();
             UpdateTemplatePreview();
             MarkActiveTabDirty();
         }
@@ -2665,6 +2675,19 @@ namespace NOCREPORTGENERATOR.Pages
             }
 
             ApplySegmentPmSelection(segmentPmCandidates[0]);
+        }
+
+        private void UpdateSegmentPmManualHint()
+        {
+            if (SegmentPmManualFallbackHintTextBlock is null)
+            {
+                return;
+            }
+
+            var hasSegmentPm = !string.IsNullOrWhiteSpace(GetSelectedSegmentPm());
+            SegmentPmManualFallbackHintTextBlock.Visibility = hasSegmentPm
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         private async Task RefreshSavedFormsAsync(string? preferredSelectedId = null)

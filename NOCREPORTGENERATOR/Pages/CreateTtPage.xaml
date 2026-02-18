@@ -479,6 +479,12 @@
                                     SelectionChanged="SegmentPmComboBox_SelectionChanged"
                                     Style="{StaticResource ShellInputComboBoxStyle}"
                                     TextSubmitted="SegmentPmComboBox_TextSubmitted" />
+                                <TextBlock
+                                    x:Name="SegmentPmManualFallbackHintTextBlock"
+                                    Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                    Text="Segment PM tidak terdeteksi otomatis. Pilih dari dropdown atau isi manual."
+                                    TextWrapping="WrapWholeWords"
+                                    Visibility="Collapsed" />
 
                                 <Grid ColumnSpacing="8">
                                     <Grid.ColumnDefinitions>

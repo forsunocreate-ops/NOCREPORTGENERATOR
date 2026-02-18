@@ -79,7 +79,7 @@
             x:Name="LegacyFilterSectionBorder"
             Grid.Row="1"
             Padding="12"
-            Visibility="Collapsed"
+            Visibility="Visible"
             Style="{StaticResource ShellGlassCardStyle}">
             <Grid ColumnSpacing="8" RowSpacing="8">
                 <Grid.RowDefinitions>
@@ -343,14 +343,16 @@
                                         Style="{StaticResource ShellInputComboBoxStyle}"
                                         SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
 
-                                    <ComboBox
-                                        x:Name="SegmentPmFilterComboBox"
+                                    <AutoSuggestBox
+                                        x:Name="SegmentPmFilterAutoSuggestBox"
                                         Grid.Column="2"
-                                        IsEditable="True"
-                                        IsTextSearchEnabled="True"
                                         PlaceholderText="Segment PM"
-                                        Style="{StaticResource ShellInputComboBoxStyle}"
-                                        SelectionChanged="SegmentPmFilterComboBox_SelectionChanged" />
+                                        QueryIcon="Find"
+                                        Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                                        GotFocus="SegmentPmFilterAutoSuggestBox_GotFocus"
+                                        QuerySubmitted="SegmentPmFilterAutoSuggestBox_QuerySubmitted"
+                                        SuggestionChosen="SegmentPmFilterAutoSuggestBox_SuggestionChosen"
+                                        TextChanged="SegmentPmFilterAutoSuggestBox_TextChanged" />
 
                                     <ComboBox
                                         x:Name="QuickFilterComboBox"

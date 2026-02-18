@@ -25,6 +25,9 @@ namespace NOCREPORTGENERATOR.Pages
         private readonly List<int> _pageSizeOptions = new() { 25, 50, 100, 250 };
         private const string AllStatusFilterOption = "Semua Status";
         private const string AllSegmentFilterOption = "Semua Segment";
+        private const string AllSegmentPmFilterOption = "Semua Segment PM";
+        private static readonly Regex SegmentIdPairRegex = new(@"\b\d{5,8}\s*[-/]\s*\d{5,8}\b", RegexOptions.Compiled);
+        private static readonly Regex SegmentIdPairStrictRegex = new(@"^\s*(?<a>\d{5,8})\s*[-/]\s*(?<b>\d{5,8})\s*$", RegexOptions.Compiled);
         private int _currentPage = 1;
         private int _pageSize = 50;
         private int _totalPages = 1;
@@ -33,10 +36,20 @@ namespace NOCREPORTGENERATOR.Pages
         private bool _isUpdatingAdvancedFilters;
         private CancellationTokenSource? _viewRefreshCts;
         private CancellationTokenSource? _searchDebounceCts;
+        private List<string> _segmentFilterOptionsAll = new();
+        private List<string> _segmentPmFilterOptionsAll = new();
 
         public HistoryTtPage()
         {
             InitializeComponent();
+            EditableComboBoxContainsFilterHelper.Attach(
+                SegmentFilterComboBox,
+                () => _segmentFilterOptionsAll,
+                AllSegmentFilterOption);
+            EditableComboBoxContainsFilterHelper.Attach(
+                SegmentPmFilterComboBox,
+                () => _segmentPmFilterOptionsAll,
+                AllSegmentPmFilterOption);
             Loaded += HistoryTtPage_Loaded;
         }
 
@@ -303,6 +316,8 @@ namespace NOCREPORTGENERATOR.Pages
             StatusFilterComboBox.SelectedIndex = 0;
             SegmentFilterComboBox.ItemsSource = new[] { AllSegmentFilterOption };
             SegmentFilterComboBox.SelectedIndex = 0;
+            SegmentPmFilterComboBox.ItemsSource = new[] { AllSegmentPmFilterOption };
+            SegmentPmFilterComboBox.SelectedIndex = 0;
             _viewOptionsInitialized = true;
         }
 
@@ -313,6 +328,7 @@ namespace NOCREPORTGENERATOR.Pages
             {
                 var selectedStatus = StatusFilterComboBox.SelectedItem as string;
                 var selectedSegment = GetSegmentFilterValue();
+                var selectedSegmentPm = GetSegmentPmFilterValue();
 
                 var statuses = _allHistoryItems
                     .Select(x => x.StatusLink)
@@ -332,6 +348,7 @@ namespace NOCREPORTGENERATOR.Pages
                     .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 segments.Insert(0, AllSegmentFilterOption);
+                _segmentFilterOptionsAll = segments.ToList();
                 SegmentFilterComboBox.ItemsSource = segments;
                 if (!string.IsNullOrWhiteSpace(selectedSegment) &&
                     segments.Any(x => string.Equals(x, selectedSegment, StringComparison.OrdinalIgnoreCase)))
@@ -343,6 +360,29 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     SegmentFilterComboBox.SelectedIndex = 0;
                 }
+
+                var segmentPms = _allHistoryItems
+                    .Select(x => x.SegmentPm)
+                    .Where(x => !string.IsNullOrWhiteSpace(x) && !string.Equals(x, "-", StringComparison.Ordinal))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                segmentPms.Insert(0, AllSegmentPmFilterOption);
+                _segmentPmFilterOptionsAll = segmentPms.ToList();
+                SegmentPmFilterComboBox.ItemsSource = segmentPms;
+                if (!string.IsNullOrWhiteSpace(selectedSegmentPm) &&
+                    segmentPms.Any(x => string.Equals(x, selectedSegmentPm, StringComparison.OrdinalIgnoreCase)))
+                {
+                    SegmentPmFilterComboBox.SelectedItem = segmentPms.First(x =>
+                        string.Equals(x, selectedSegmentPm, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    SegmentPmFilterComboBox.SelectedIndex = 0;
+                }
+
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentFilterComboBox);
+                EditableComboBoxContainsFilterHelper.Refresh(SegmentPmFilterComboBox);
             }
             finally
             {
@@ -390,6 +430,17 @@ namespace NOCREPORTGENERATOR.Pages
             RefreshCurrentView();
         }
 
+        private void SegmentPmFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_viewOptionsInitialized || _isUpdatingAdvancedFilters)
+            {
+                return;
+            }
+
+            _currentPage = 1;
+            RefreshCurrentView();
+        }
+
         private void DispatchFromDatePicker_DateChanged(object sender, CalendarDatePickerDateChangedEventArgs e)
         {
             if (!_viewOptionsInitialized || _isUpdatingAdvancedFilters)
@@ -425,6 +476,11 @@ namespace NOCREPORTGENERATOR.Pages
                 if (SegmentFilterComboBox.Items.Count > 0)
                 {
                     SegmentFilterComboBox.SelectedIndex = 0;
+                }
+
+                if (SegmentPmFilterComboBox.Items.Count > 0)
+                {
+                    SegmentPmFilterComboBox.SelectedIndex = 0;
                 }
 
                 if (DispatchFromDatePicker.Date.HasValue)
@@ -564,6 +620,7 @@ namespace NOCREPORTGENERATOR.Pages
                 var keyword = SearchTextBox?.Text?.Trim() ?? string.Empty;
                 var statusFilter = GetStatusFilterValue();
                 var segmentFilter = GetSegmentFilterValue();
+                var segmentPmFilter = GetSegmentPmFilterValue();
                 var fromDate = DispatchFromDatePicker?.Date?.Date;
                 var toDate = DispatchToDatePicker?.Date?.Date;
                 var sort = SortComboBox?.SelectedItem as string ?? "Dispatch Terbaru";
@@ -578,6 +635,7 @@ namespace NOCREPORTGENERATOR.Pages
                         keyword,
                         statusFilter,
                         segmentFilter,
+                        segmentPmFilter,
                         fromDate,
                         toDate,
                         sort,
@@ -636,6 +694,7 @@ namespace NOCREPORTGENERATOR.Pages
             string keyword,
             string? statusFilter,
             string? segmentFilter,
+            string? segmentPmFilter,
             DateTime? fromDate,
             DateTime? toDate,
             string sort,
@@ -657,7 +716,12 @@ namespace NOCREPORTGENERATOR.Pages
 
             if (!string.IsNullOrWhiteSpace(segmentFilter))
             {
-                query = query.Where(x => ContainsInsensitive(x.SegmentRoute, segmentFilter));
+                query = query.Where(x => MatchesSegmentPairFilter(x.SegmentRoute, x.SegmentPm, segmentFilter));
+            }
+
+            if (!string.IsNullOrWhiteSpace(segmentPmFilter))
+            {
+                query = query.Where(x => MatchesSegmentPairFilter(x.SegmentPm, x.SegmentRoute, segmentPmFilter));
             }
 
             if (fromDate.HasValue || toDate.HasValue)
@@ -686,6 +750,7 @@ namespace NOCREPORTGENERATOR.Pages
                     ContainsInsensitive(x.TtIoh, keyword) ||
                     ContainsInsensitive(x.StatusLink, keyword) ||
                     ContainsInsensitive(x.SegmentRoute, keyword) ||
+                    ContainsInsensitive(x.SegmentPm, keyword) ||
                     ContainsInsensitive(x.RootCause, keyword) ||
                     ContainsInsensitive(x.CpLocation, keyword) ||
                     ContainsInsensitive(x.DispatchTime, keyword));
@@ -718,8 +783,17 @@ namespace NOCREPORTGENERATOR.Pages
             var end = skip + pageItems.Count;
             var totalOpen = allItems.Count(x => ContainsInsensitive(x.StatusLink, "open") || ContainsInsensitive(x.StatusLink, "down"));
             var distinctSegmentCount = allItems
-                .Where(x => !string.IsNullOrWhiteSpace(x.SegmentRoute) && !string.Equals(x.SegmentRoute, "-", StringComparison.Ordinal))
-                .Select(x => x.SegmentRoute)
+                .Select(x =>
+                {
+                    var key = TryCanonicalSegmentPairKey(x.SegmentPm);
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        return key;
+                    }
+
+                    return TryCanonicalSegmentPairKey(x.SegmentRoute);
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Count();
 
@@ -803,6 +877,84 @@ namespace NOCREPORTGENERATOR.Pages
             return typedText;
         }
 
+        private string? GetSegmentPmFilterValue()
+        {
+            if (SegmentPmFilterComboBox is null)
+            {
+                return null;
+            }
+
+            if (SegmentPmFilterComboBox.SelectedItem is string selected &&
+                !string.IsNullOrWhiteSpace(selected) &&
+                !string.Equals(selected, AllSegmentPmFilterOption, StringComparison.OrdinalIgnoreCase))
+            {
+                return selected;
+            }
+
+            var typedText = SegmentPmFilterComboBox.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(typedText) ||
+                string.Equals(typedText, AllSegmentPmFilterOption, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            return typedText;
+        }
+
+
+        private static bool MatchesSegmentPairFilter(string primaryValue, string secondaryValue, string filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                return true;
+            }
+
+            var filterKey = TryCanonicalSegmentPairKey(filter);
+            if (string.IsNullOrWhiteSpace(filterKey))
+            {
+                return ContainsInsensitive(primaryValue, filter) || ContainsInsensitive(secondaryValue, filter);
+            }
+
+            return string.Equals(TryCanonicalSegmentPairKey(primaryValue), filterKey, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(TryCanonicalSegmentPairKey(secondaryValue), filterKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string TryCanonicalSegmentPairKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.Equals(value.Trim(), "-", StringComparison.Ordinal))
+            {
+                return string.Empty;
+            }
+
+            var match = SegmentIdPairRegex.Match(value);
+            if (!match.Success)
+            {
+                return string.Empty;
+            }
+
+            var strict = SegmentIdPairStrictRegex.Match(match.Value);
+            if (!strict.Success)
+            {
+                return string.Empty;
+            }
+
+            var left = strict.Groups["a"].Value;
+            var right = strict.Groups["b"].Value;
+            return CompareNumericSegmentId(left, right) >= 0
+                ? left + "|" + right
+                : right + "|" + left;
+        }
+
+        private static int CompareNumericSegmentId(string left, string right)
+        {
+            if (left.Length != right.Length)
+            {
+                return left.Length.CompareTo(right.Length);
+            }
+
+            return string.Compare(left, right, StringComparison.Ordinal);
+        }
+
         private static bool ContainsInsensitive(string source, string keyword)
         {
             if (string.IsNullOrWhiteSpace(source) || string.IsNullOrWhiteSpace(keyword))
@@ -812,6 +964,7 @@ namespace NOCREPORTGENERATOR.Pages
 
             return source.Contains(keyword, StringComparison.OrdinalIgnoreCase);
         }
+
 
         private sealed class HistoryViewPreparedData
         {
@@ -855,6 +1008,7 @@ namespace NOCREPORTGENERATOR.Pages
             public string TtIoh { get; set; } = "-";
             public string StatusLink { get; set; } = "-";
             public string SegmentRoute { get; set; } = "-";
+            public string SegmentPm { get; set; } = "-";
             public string RootCause { get; set; } = "-";
             public string CpLocation { get; set; } = "-";
             public string DispatchTime { get; set; } = "-";
@@ -868,6 +1022,7 @@ namespace NOCREPORTGENERATOR.Pages
                     TtIoh = ResolveTtIoh(record),
                     StatusLink = Normalize(record.StatusLink),
                     SegmentRoute = Normalize(record.SegmentRoute),
+                    SegmentPm = Normalize(record.SegmentPm),
                     RootCause = Normalize(record.RootCause),
                     CpLocation = Normalize(string.IsNullOrWhiteSpace(record.CutPoint) ? record.Coordinate : record.CutPoint),
                     DispatchDateTimeValue = record.DispatchDateTime,

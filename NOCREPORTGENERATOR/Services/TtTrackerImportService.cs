@@ -16,7 +16,8 @@ namespace NOCREPORTGENERATOR.Services
     {
         private const string TargetSheetName = "All Fo Cut";
         private const int EmptyStreakStopThreshold = 2500;
-        private static readonly Regex TtIohRegex = new(@"INC-\d{8}-\d{8}", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex TtIohRegex = new(@"\bINC-(?<a>\d{8})-(?<b>\d{8})\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        private static readonly Regex TtIohCompactRegex = new(@"\bINC(?<digits>\d{6,20})\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex ProgressDateRegex = new(
             @"(?<dt>\b(?:\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{2,4})\s+\d{1,2}:\d{2}(?::\d{2})?\b)",
             RegexOptions.Compiled);
@@ -252,7 +253,7 @@ namespace NOCREPORTGENERATOR.Services
             }
 
             var progressRaw = GetText(reader, ColProgress);
-            var segmentPm = DatabaseTtSegmentPmLookupService.ExtractSegmentPmFromProgress(progressRaw);
+            var segmentPm = DatabaseTtSegmentPmLookupService.ResolveSegmentPm(progressRaw, resolvedSegmentRoute);
             if (string.IsNullOrWhiteSpace(segmentPm) &&
                 !string.IsNullOrWhiteSpace(ttIoh) &&
                 segmentPmByTtIoh.TryGetValue(ttIoh, out var fallbackSegmentPm))
@@ -667,7 +668,25 @@ namespace NOCREPORTGENERATOR.Services
                 return string.Empty;
             }
 
-            return TtIohRegex.IsMatch(text) ? text : string.Empty;
+            var dashed = TtIohRegex.Match(text);
+            if (dashed.Success)
+            {
+                return "INC-" + dashed.Groups["a"].Value + "-" + dashed.Groups["b"].Value;
+            }
+
+            var compact = TtIohCompactRegex.Match(text);
+            if (!compact.Success)
+            {
+                return string.Empty;
+            }
+
+            var digits = compact.Groups["digits"].Value;
+            if (digits.Length == 16)
+            {
+                return "INC-" + digits.Substring(0, 8) + "-" + digits.Substring(8, 8);
+            }
+
+            return "INC" + digits;
         }
 
         private static string ExtractTtIoh(string? source)
@@ -678,8 +697,25 @@ namespace NOCREPORTGENERATOR.Services
                 return string.Empty;
             }
 
-            var match = TtIohRegex.Match(text);
-            return match.Success ? match.Value : string.Empty;
+            var dashed = TtIohRegex.Match(text);
+            if (dashed.Success)
+            {
+                return "INC-" + dashed.Groups["a"].Value + "-" + dashed.Groups["b"].Value;
+            }
+
+            var compact = TtIohCompactRegex.Match(text);
+            if (!compact.Success)
+            {
+                return string.Empty;
+            }
+
+            var digits = compact.Groups["digits"].Value;
+            if (digits.Length == 16)
+            {
+                return "INC-" + digits.Substring(0, 8) + "-" + digits.Substring(8, 8);
+            }
+
+            return "INC" + digits;
         }
 
         public sealed class ImportPreviewResult

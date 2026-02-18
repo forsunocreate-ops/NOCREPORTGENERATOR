@@ -61,6 +61,11 @@ namespace NOCREPORTGENERATOR.Pages
                 PicTextBlock.Text = Normalize(record.Pic);
                 StatusLinkTextBlock.Text = Normalize(record.StatusLink);
                 SegmentRouteTextBlock.Text = Normalize(record.SegmentRoute);
+                var segmentPmValue = Normalize(record.SegmentPm);
+                SegmentPmTextBlock.Text = "Segment PM: " + segmentPmValue;
+                SegmentPmManualHintTextBlock.Visibility = string.Equals(segmentPmValue, "-", StringComparison.Ordinal)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
                 SystemKeyTextBlock.Text = Normalize(record.SystemKey);
                 RootCauseTextBlock.Text = Normalize(record.RootCause);
                 CutPointTextBlock.Text = Normalize(record.CutPoint);

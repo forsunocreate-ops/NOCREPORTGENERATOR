@@ -72,8 +72,11 @@ namespace NOCREPORTGENERATOR.Services
             var candidates = new[]
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "File Source", "DATABASE_TT.xlsx"),
                 Path.Combine(AppContext.BaseDirectory, "DATABASE_TT.xlsx"),
-                Path.Combine(Environment.CurrentDirectory, "DATABASE_TT.xlsx")
+                Path.Combine(AppContext.BaseDirectory, "File Source", "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "DATABASE_TT.xlsx"),
+                Path.Combine(Environment.CurrentDirectory, "File Source", "DATABASE_TT.xlsx")
             };
 
             return candidates.FirstOrDefault(File.Exists) ?? string.Empty;

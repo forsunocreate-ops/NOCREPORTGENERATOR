@@ -100,7 +100,16 @@
                         <TextBlock x:Name="StatusLinkTextBlock" Grid.Row="7" Grid.Column="1" Text="-" />
 
                         <TextBlock Grid.Row="8" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="Segment Route" />
-                        <TextBlock x:Name="SegmentRouteTextBlock" Grid.Row="8" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />
+                        <StackPanel Grid.Row="8" Grid.Column="1" Spacing="4">
+                            <TextBlock x:Name="SegmentRouteTextBlock" Text="-" TextWrapping="WrapWholeWords" />
+                            <TextBlock x:Name="SegmentPmTextBlock" Text="Segment PM: -" TextWrapping="WrapWholeWords" />
+                            <TextBlock
+                                x:Name="SegmentPmManualHintTextBlock"
+                                Foreground="{StaticResource ShellMutedForegroundBrush}"
+                                Text="Segment PM belum ditemukan otomatis. Silakan isi/pilih manual di halaman Create TT."
+                                TextWrapping="WrapWholeWords"
+                                Visibility="Collapsed" />
+                        </StackPanel>
 
                         <TextBlock Grid.Row="9" Grid.Column="0" Style="{StaticResource ShellSectionCaptionStyle}" Text="System Key" />
                         <TextBlock x:Name="SystemKeyTextBlock" Grid.Row="9" Grid.Column="1" Text="-" TextWrapping="WrapWholeWords" />

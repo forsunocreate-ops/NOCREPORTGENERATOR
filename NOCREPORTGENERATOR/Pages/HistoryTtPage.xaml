@@ -142,7 +142,7 @@
                     <TextBox
                         x:Name="SearchTextBox"
                         Grid.Column="0"
-                        PlaceholderText="Filter: TT IOH, Status Link, Segment, Root Cause, CP Location..."
+                        PlaceholderText="Filter: TT IOH, Status Link, Segment Route/PM, Root Cause, CP Location..."
                         Style="{StaticResource ShellInputTextBoxStyle}"
                         TextChanged="SearchTextBox_TextChanged" />
 
@@ -184,12 +184,14 @@
                     Padding="12"
                     Style="{StaticResource ShellGlassSubtleCardStyle}">
                     <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                        <Grid ColumnSpacing="12" MinWidth="1380">
+                        <Grid ColumnSpacing="12" MinWidth="1640">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="190" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="190" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="220" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="220" />
                         <ColumnDefinition Width="Auto" />
@@ -215,20 +217,30 @@
                         VerticalAlignment="Center"
                         SelectionChanged="SegmentFilterComboBox_SelectionChanged" />
 
-                    <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="Dispatch From" />
+                    <TextBlock Grid.Column="4" VerticalAlignment="Center" Text="Segment PM" />
+                    <ComboBox
+                        x:Name="SegmentPmFilterComboBox"
+                        Grid.Column="5"
+                        IsEditable="True"
+                        IsTextSearchEnabled="True"
+                        Style="{StaticResource ShellInputComboBoxStyle}"
+                        VerticalAlignment="Center"
+                        SelectionChanged="SegmentPmFilterComboBox_SelectionChanged" />
+
+                    <TextBlock Grid.Column="6" VerticalAlignment="Center" Text="Dispatch From" />
                     <CalendarDatePicker
                         x:Name="DispatchFromDatePicker"
-                        Grid.Column="5"
+                        Grid.Column="7"
                         MinWidth="220"
                         PlaceholderText="Pilih tanggal"
                         Style="{StaticResource ShellInputCalendarDatePickerStyle}"
                         VerticalAlignment="Center"
                         DateChanged="DispatchFromDatePicker_DateChanged" />
 
-                    <TextBlock Grid.Column="6" VerticalAlignment="Center" Text="Dispatch To" />
+                    <TextBlock Grid.Column="8" VerticalAlignment="Center" Text="Dispatch To" />
                     <CalendarDatePicker
                         x:Name="DispatchToDatePicker"
-                        Grid.Column="7"
+                        Grid.Column="9"
                         MinWidth="220"
                         PlaceholderText="Pilih tanggal"
                         Style="{StaticResource ShellInputCalendarDatePickerStyle}"
@@ -237,7 +249,7 @@
 
                     <Button
                         x:Name="ResetAdvancedFilterButton"
-                        Grid.Column="8"
+                        Grid.Column="10"
                         Click="ResetAdvancedFilterButton_Click"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
@@ -282,6 +294,11 @@
                         <controls:DataGridTextColumn
                             Binding="{Binding SegmentRoute}"
                             Header="Segment Route"
+                            MinWidth="220"
+                            Width="2*" />
+                        <controls:DataGridTextColumn
+                            Binding="{Binding SegmentPm}"
+                            Header="Segment PM"
                             MinWidth="220"
                             Width="2*" />
                         <controls:DataGridTextColumn
