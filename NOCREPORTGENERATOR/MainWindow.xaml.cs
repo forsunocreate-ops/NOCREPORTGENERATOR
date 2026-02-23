@@ -121,18 +121,18 @@ namespace NOCREPORTGENERATOR
                 var titleBar = appWindow.TitleBar;
 
                 titleBar.BackgroundColor = Colors.Transparent;
-                titleBar.ForegroundColor = ColorHelper.FromArgb(255, 15, 36, 56);
+                titleBar.ForegroundColor = ColorHelper.FromArgb(255, 13, 30, 42);
                 titleBar.InactiveBackgroundColor = Colors.Transparent;
-                titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 124, 139, 156);
+                titleBar.InactiveForegroundColor = ColorHelper.FromArgb(255, 106, 127, 142);
 
                 titleBar.ButtonBackgroundColor = Colors.Transparent;
-                titleBar.ButtonForegroundColor = ColorHelper.FromArgb(255, 15, 36, 56);
-                titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(95, 219, 233, 246);
-                titleBar.ButtonHoverForegroundColor = ColorHelper.FromArgb(255, 11, 30, 47);
-                titleBar.ButtonPressedBackgroundColor = ColorHelper.FromArgb(145, 187, 216, 241);
-                titleBar.ButtonPressedForegroundColor = Colors.White;
+                titleBar.ButtonForegroundColor = ColorHelper.FromArgb(255, 13, 30, 42);
+                titleBar.ButtonHoverBackgroundColor = ColorHelper.FromArgb(110, 56, 162, 145);
+                titleBar.ButtonHoverForegroundColor = ColorHelper.FromArgb(255, 10, 27, 35);
+                titleBar.ButtonPressedBackgroundColor = ColorHelper.FromArgb(155, 0, 80, 70);
+                titleBar.ButtonPressedForegroundColor = ColorHelper.FromArgb(255, 245, 255, 253);
                 titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
-                titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 124, 139, 156);
+                titleBar.ButtonInactiveForegroundColor = ColorHelper.FromArgb(255, 106, 127, 142);
             }
             catch (Exception ex)
             {
@@ -250,28 +250,7 @@ namespace NOCREPORTGENERATOR
                 : GridLength.Auto;
             ContentHeaderBorder.Visibility = isLiveMap ? Visibility.Collapsed : Visibility.Visible;
             ContentHostBorder.Margin = isLiveMap ? new Thickness(0) : new Thickness(0, 14, 0, 0);
-            HeaderImportButton.Visibility = isHistoryTt ? Visibility.Visible : Visibility.Collapsed;
             HeaderRefreshButton.Visibility = isHistoryTt ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        private async void HeaderImportButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (ContentFrame.Content is not HistoryTtPage historyPage)
-            {
-                return;
-            }
-
-            HeaderImportButton.IsEnabled = false;
-            HeaderRefreshButton.IsEnabled = false;
-            try
-            {
-                await historyPage.ImportFromShellAsync();
-            }
-            finally
-            {
-                HeaderImportButton.IsEnabled = true;
-                HeaderRefreshButton.IsEnabled = true;
-            }
         }
 
         private async void HeaderRefreshButton_Click(object sender, RoutedEventArgs e)

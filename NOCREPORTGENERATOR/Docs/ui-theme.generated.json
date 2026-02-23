@@ -1,0 +1,80 @@
+{
+  "seed": "#0A7A6B",
+  "palette": {
+    "primary": "#FF005046",
+    "on_primary": "#FF00F6D9",
+    "primary_container": "#FF008373",
+    "on_primary_container": "#FFFFFFFF",
+    "secondary": "#FF00504C",
+    "on_secondary": "#FF2BF3EB",
+    "secondary_container": "#FF00827E",
+    "tertiary": "#FF004C67",
+    "surface": "#FFD4FFFB",
+    "surface_container": "#FFADF5F0",
+    "surface_container_high": "#FFA2F1EB",
+    "outline": "#FF316C68",
+    "on_surface": "#FF002927",
+    "hero_start": "#FF00231B",
+    "hero_mid": "#FF005049",
+    "hero_end": "#FF135773",
+    "hero_border": "#FF236762",
+    "shell_background_start": "#FFD4FFFB",
+    "shell_background_mid": "#FFB5FDF8",
+    "shell_background_end": "#FFB2FFFC",
+    "card_bg": "#FFFDFEFF",
+    "card_bg_secondary": "#FFBAFFFD",
+    "card_border": "#FF55908B",
+    "nav_selected_bg": "#FF38A291",
+    "nav_selected_border": "#FF005046",
+    "nav_default_bg": "#FFDBFFFF",
+    "nav_default_border": "#FF619C97",
+    "title_fg": "#FF0E1A26",
+    "muted_fg": "#FF4A6078",
+    "success": "#FF1C8E5A",
+    "warning": "#FFD88419",
+    "danger": "#FFD64656",
+    "import_bg": "#FFF4FBF9"
+  },
+  "contrast": {
+    "on_primary_vs_primary": 6.7911056690462965,
+    "on_surface_vs_surface": 14.479630941573857,
+    "title_vs_card_bg": 17.412034984356342
+  },
+  "contrast_pass": {
+    "on_primary_vs_primary": true,
+    "on_surface_vs_surface": true,
+    "title_vs_card_bg": true
+  },
+  "colour_delta": {
+    "delta_e_primary_secondary": 2.8324200684617344,
+    "delta_e_primary_tertiary": 18.18775131792456
+  },
+  "preview_hash": "bb6e3bc49195c491",
+  "svg_result": {
+    "path_count": 1,
+    "element_count": 2,
+    "optimized_svg": "C:\\Users\\hazel\\source\\repos\\NOCREPORTGENERATOR\\NOCREPORTGENERATOR\\Assets\\UI\\noc-icon.optimized.svg",
+    "preview_png": "C:\\Users\\hazel\\source\\repos\\NOCREPORTGENERATOR\\NOCREPORTGENERATOR\\Assets\\UI\\noc-icon-preview.png",
+    "icon_phash": "8000000000000000",
+    "conversion_status": "fallback_png: cairosvg unavailable (missing cairo runtime)"
+  },
+  "font_result": {
+    "font_path": "C:\\Users\\hazel\\source\\repos\\NOCREPORTGENERATOR\\NOCREPORTGENERATOR\\Assets\\Fonts\\remixicon.ttf",
+    "family_names": [
+      "remixicon"
+    ],
+    "family_name_count": 1
+  },
+  "screenshot_state": "ok",
+  "open_windows_sample": [
+    "Taskbar",
+    "VS Extension untuk UI - Google Chrome",
+    "NOCREPORTGENERATOR - python-pip-packages.txt - Microsoft Visual Studio",
+    "(64) YouTube - Google Chrome",
+    "Chrome Remote Desktop - NOC-JABO2",
+    "Programs",
+    "WhatsApp",
+    "WhatsApp Beta",
+    "Program Manager"
+  ]
+}

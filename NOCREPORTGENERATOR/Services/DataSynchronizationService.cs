@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,37 +9,54 @@ namespace NOCREPORTGENERATOR.Services
     public static class DataSynchronizationService
     {
         public static async Task<SyncAllResult> SynchronizeAllAsync(
+            string databaseLinkPath,
+            string segmentPmPath,
+            string databaseTtPath,
             IProgress<SyncProgressInfo>? progress = null,
             CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(databaseLinkPath) || !File.Exists(databaseLinkPath))
+            {
+                throw new FileNotFoundException("File DATABASE_LINK tidak ditemukan.", databaseLinkPath);
+            }
+
+            if (string.IsNullOrWhiteSpace(segmentPmPath) || !File.Exists(segmentPmPath))
+            {
+                throw new FileNotFoundException("File SEGMENTPM tidak ditemukan.", segmentPmPath);
+            }
+
+            if (string.IsNullOrWhiteSpace(databaseTtPath) || !File.Exists(databaseTtPath))
+            {
+                throw new FileNotFoundException("File DATABASE_TT tidak ditemukan.", databaseTtPath);
+            }
+
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new SyncProgressInfo(5, "Sinkronisasi dimulai..."));
             progress?.Report(new SyncProgressInfo(10, "1/5 Refresh cache DATABASE_LINK..."));
-            await DatabaseLinkLookupService.RefreshCacheAsync();
+            await DatabaseLinkLookupService.RefreshCacheFromSourceAsync(databaseLinkPath);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new SyncProgressInfo(22, "2/5 Import SEGMENTPM.xlsx..."));
-            var segmentImport = await SegmentPmMapService.ImportFromWorkbookAsync(password: "no", cancellationToken: cancellationToken);
+            var segmentImport = await SegmentPmMapService.ImportFromWorkbookAsync(
+                filePath: segmentPmPath,
+                password: "no",
+                cancellationToken: cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new SyncProgressInfo(40, "3/5 Import TT dari DATABASE_TT.xlsx..."));
-            var databaseTtPath = ResolveDatabaseTtPath();
-            TtTrackerImportService.ImportExecutionResult? ttImportResult = null;
-            if (!string.IsNullOrWhiteSpace(databaseTtPath) && File.Exists(databaseTtPath))
+            var ttProgress = new Progress<TtTrackerImportService.ImportProgressInfo>(p =>
             {
-                var ttProgress = new Progress<TtTrackerImportService.ImportProgressInfo>(p =>
-                {
-                    var stagePercent = 40 + (p.Percent * 0.4); // 40..80
-                    progress?.Report(new SyncProgressInfo(stagePercent, "Import DATABASE_TT: " + p.Message));
-                });
-
-                ttImportResult = await TtTrackerImportService.ImportAsync(databaseTtPath, cancellationToken, ttProgress);
-            }
+                var stagePercent = 40 + (p.Percent * 0.4); // 40..80
+                progress?.Report(new SyncProgressInfo(stagePercent, "Import DATABASE_TT: " + p.Message));
+            });
+            var ttImportResult = await TtTrackerImportService.ImportAsync(databaseTtPath, cancellationToken, ttProgress);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new SyncProgressInfo(86, "4/5 Load mapping Segment PM dari DATABASE_TT.xlsx..."));
             DatabaseTtSegmentPmLookupService.InvalidateCache();
-            var segmentPmByTtIoh = await DatabaseTtSegmentPmLookupService.GetSegmentPmByTtIohAsync(cancellationToken: cancellationToken);
+            var segmentPmByTtIoh = await DatabaseTtSegmentPmLookupService.GetSegmentPmByTtIohAsync(
+                filePath: databaseTtPath,
+                cancellationToken: cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new SyncProgressInfo(94, "5/5 Sinkron Segment PM ke History TT lokal..."));
@@ -52,8 +67,8 @@ namespace NOCREPORTGENERATOR.Services
                 SegmentPmLinkCount = segmentImport.InsertedLinks,
                 SegmentPmLinkRowsRead = segmentImport.ProcessedRows,
                 SegmentPmMappedTtCount = segmentPmByTtIoh.Count,
-                UpdatedHistoryRows = updatedHistoryRows + (ttImportResult?.Inserted ?? 0),
-                ImportedFromDatabaseTt = ttImportResult?.Inserted ?? 0,
+                UpdatedHistoryRows = updatedHistoryRows + ttImportResult.Inserted,
+                ImportedFromDatabaseTt = ttImportResult.Inserted,
                 CompletedAt = DateTimeOffset.Now
             };
 
@@ -65,21 +80,6 @@ namespace NOCREPORTGENERATOR.Services
                 ", updateHistory=" + result.UpdatedHistoryRows.ToString(CultureInfo.InvariantCulture)));
 
             return result;
-        }
-
-        private static string ResolveDatabaseTtPath()
-        {
-            var candidates = new[]
-            {
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "DATABASE_TT.xlsx"),
-                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads", "File Source", "DATABASE_TT.xlsx"),
-                Path.Combine(AppContext.BaseDirectory, "DATABASE_TT.xlsx"),
-                Path.Combine(AppContext.BaseDirectory, "File Source", "DATABASE_TT.xlsx"),
-                Path.Combine(Environment.CurrentDirectory, "DATABASE_TT.xlsx"),
-                Path.Combine(Environment.CurrentDirectory, "File Source", "DATABASE_TT.xlsx")
-            };
-
-            return candidates.FirstOrDefault(File.Exists) ?? string.Empty;
         }
 
         public sealed class SyncAllResult

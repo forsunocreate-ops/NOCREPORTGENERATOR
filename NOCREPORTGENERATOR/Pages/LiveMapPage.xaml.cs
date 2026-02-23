@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
@@ -36,12 +37,10 @@ namespace NOCREPORTGENERATOR.Pages
         private const string AllStatusOption = "Semua Status";
         private const string AllSeverityOption = "Semua Severity";
         private const string LiveMapSnapshotVersion = "1";
-        private static readonly string AppDataDirectoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NOCREPORTGENERATOR");
-        private static readonly string LocalFormsDbPath = Path.Combine(AppDataDirectoryPath, "tt_forms.db");
-        private static readonly string SegmentPmDbPath = Path.Combine(AppDataDirectoryPath, "segmentpm_map.db");
-        private static readonly string LiveMapSnapshotFilePath = Path.Combine(AppDataDirectoryPath, "live_map_snapshot.json");
+        private static readonly string AppDataDirectoryPath = PortableDataPaths.DataDirectoryPath;
+        private static readonly string LocalFormsDbPath = PortableDataPaths.LocalFormsDbPath;
+        private static readonly string SegmentPmDbPath = PortableDataPaths.SegmentPmDbPath;
+        private static readonly string LiveMapSnapshotFilePath = PortableDataPaths.LiveMapSnapshotPath;
         private static readonly TimeSpan OverlayIdleTimeout = TimeSpan.FromSeconds(5);
 
         private bool _webViewReady;
@@ -61,25 +60,22 @@ namespace NOCREPORTGENERATOR.Pages
         private List<string> _segmentRouteFilterOptions = new();
         private List<string> _segmentPmFilterOptions = new();
         private List<string> _knownSegmentPmOptions = new();
-        private string _segmentPmSourcePath = string.Empty;
         private CancellationTokenSource? _renderCts;
         private CancellationTokenSource? _smartFilterDebounceCts;
         private CancellationTokenSource? _snapshotSaveDebounceCts;
         private readonly DispatcherTimer _overlayIdleTimer = new();
         private bool _overlayAutoHidden;
         private bool _suppressFilterEvents;
+        private bool _isUnloaded;
 
         public LiveMapPage()
         {
             InitializeComponent();
             NavigationCacheMode = Microsoft.UI.Xaml.Navigation.NavigationCacheMode.Required;
-            EditableComboBoxContainsFilterHelper.Attach(
-                SegmentRouteFilterComboBox,
-                () => _segmentRouteFilterOptions,
-                AllSegmentOption);
             LocalFormStorageService.RecordsChanged += LocalFormStorageService_RecordsChanged;
             InitializeOverlaySearchAutoHide();
             Loaded += LiveMapPage_Loaded;
+            Unloaded += LiveMapPage_Unloaded;
         }
 
         private void InitializeOverlaySearchAutoHide()
@@ -158,12 +154,22 @@ namespace NOCREPORTGENERATOR.Pages
 
         private async void LiveMapPage_Loaded(object sender, RoutedEventArgs e)
         {
+            _isUnloaded = false;
             RegisterOverlayActivity();
             EnsureFilterOptions();
             SetSmartQueryText(SmartFilterAutoSuggestBox.Text ?? string.Empty);
             await EnsureSegmentRouteFilterOptionsAsync();
             await LoadMapAsync();
             await TryFocusPendingCoordinateAsync();
+        }
+
+        private void LiveMapPage_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _isUnloaded = true;
+            _overlayIdleTimer.Stop();
+            CancelAndDispose(ref _renderCts);
+            CancelAndDispose(ref _smartFilterDebounceCts);
+            CancelAndDispose(ref _snapshotSaveDebounceCts);
         }
 
         private async Task LoadMapAsync()
@@ -364,27 +370,27 @@ namespace NOCREPORTGENERATOR.Pages
             _suppressFilterEvents = true;
             try
             {
-                var lookup = await DatabaseLinkLookupService.FindSegmentLookupBySystemKeyAsync(string.Empty);
                 var items = new List<string> { AllSegmentOption };
+                var lookup = await DatabaseLinkLookupService.FindSegmentLookupBySystemKeyAsync(string.Empty);
                 items.AddRange(lookup.Segments);
+
                 _segmentRouteFilterOptions = items
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
-                SegmentRouteFilterComboBox.ItemsSource = items;
-                EditableComboBoxContainsFilterHelper.Refresh(SegmentRouteFilterComboBox);
+                SegmentRouteFilterAutoSuggestBox.ItemsSource = items.Take(250).ToList();
             }
             catch
             {
                 _segmentRouteFilterOptions = new List<string> { AllSegmentOption };
-                SegmentRouteFilterComboBox.ItemsSource = new[] { AllSegmentOption };
+                SegmentRouteFilterAutoSuggestBox.ItemsSource = new[] { AllSegmentOption };
             }
             finally
             {
                 _suppressFilterEvents = false;
             }
 
-            SegmentRouteFilterComboBox.SelectedIndex = 0;
+            SegmentRouteFilterAutoSuggestBox.Text = AllSegmentOption;
             _segmentReady = true;
         }
 
@@ -398,9 +404,7 @@ namespace NOCREPORTGENERATOR.Pages
                 {
                     try
                     {
-                        var map = await SegmentPmMapService.GetSegmentPmByRouteFromWorkbookAsync(
-                            filePath: string.IsNullOrWhiteSpace(_segmentPmSourcePath) ? null : _segmentPmSourcePath,
-                            password: "no");
+                        var map = await SegmentPmMapService.GetSegmentPmByRouteAsync();
                         _segmentPmByRoute = map.ToDictionary(x => x.Key, x => x.Value, StringComparer.OrdinalIgnoreCase);
                     }
                     catch
@@ -412,9 +416,7 @@ namespace NOCREPORTGENERATOR.Pages
                 IReadOnlyList<string> optionsFromWorkbook;
                 try
                 {
-                    optionsFromWorkbook = await SegmentPmMapService.GetSegmentPmOptionsFromWorkbookAsync(
-                        filePath: string.IsNullOrWhiteSpace(_segmentPmSourcePath) ? null : _segmentPmSourcePath,
-                        password: "no");
+                    optionsFromWorkbook = await SegmentPmMapService.GetSegmentPmOptionsAsync();
                 }
                 catch
                 {
@@ -600,7 +602,9 @@ namespace NOCREPORTGENERATOR.Pages
         {
             try
             {
-                var current = (SegmentRouteFilterComboBox.ItemsSource as IEnumerable<string>) ?? new[] { AllSegmentOption };
+                IEnumerable<string> current = _segmentRouteFilterOptions.Count == 0
+                    ? new[] { AllSegmentOption }
+                    : _segmentRouteFilterOptions;
                 var merged = current
                     .Concat(links.Select(x => x.RouteSegment))
                     .Where(x => !string.IsNullOrWhiteSpace(x))
@@ -619,12 +623,12 @@ namespace NOCREPORTGENERATOR.Pages
                 }
 
                 _segmentRouteFilterOptions = merged.ToList();
-                var selected = SegmentRouteFilterComboBox.SelectedItem as string;
+                var selected = SegmentRouteFilterAutoSuggestBox.Text?.Trim();
                 _suppressFilterEvents = true;
                 try
                 {
-                    SegmentRouteFilterComboBox.ItemsSource = merged;
-                    SegmentRouteFilterComboBox.SelectedItem = merged.FirstOrDefault(x =>
+                    SegmentRouteFilterAutoSuggestBox.ItemsSource = BuildSegmentRouteSuggestions(selected);
+                    SegmentRouteFilterAutoSuggestBox.Text = merged.FirstOrDefault(x =>
                         string.Equals(x, selected, StringComparison.OrdinalIgnoreCase)) ?? AllSegmentOption;
                 }
                 finally
@@ -632,7 +636,6 @@ namespace NOCREPORTGENERATOR.Pages
                     _suppressFilterEvents = false;
                 }
 
-                EditableComboBoxContainsFilterHelper.Refresh(SegmentRouteFilterComboBox);
             }
             catch (Exception ex)
             {
@@ -791,17 +794,56 @@ namespace NOCREPORTGENERATOR.Pages
 
         private void SetMapRenderProgressVisible(bool visible, double percent, string message, bool indeterminate)
         {
-            MapRenderProgressBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
-            MapRenderProgressTextBlock.Text = string.IsNullOrWhiteSpace(message) ? "Memproses data Live Map..." : message;
-            MapRenderProgressBar.IsIndeterminate = indeterminate;
-            if (!indeterminate)
+            if (_isUnloaded || XamlRoot is null)
             {
-                var safe = Math.Max(0, Math.Min(100, percent));
-                MapRenderProgressBar.Value = safe;
+                return;
             }
-            else
+
+            if (!DispatcherQueue.HasThreadAccess)
             {
-                MapRenderProgressBar.Value = 0;
+                _ = DispatcherQueue.TryEnqueue(() => SetMapRenderProgressVisible(visible, percent, message, indeterminate));
+                return;
+            }
+
+            try
+            {
+                MapRenderProgressBorder.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+                MapRenderProgressTextBlock.Text = string.IsNullOrWhiteSpace(message) ? "Memproses data Live Map..." : message;
+                MapRenderProgressBar.IsIndeterminate = indeterminate;
+                if (!indeterminate)
+                {
+                    var safe = Math.Max(0, Math.Min(100, percent));
+                    MapRenderProgressBar.Value = safe;
+                }
+                else
+                {
+                    MapRenderProgressBar.Value = 0;
+                }
+            }
+            catch (Exception ex) when (ex is COMException || ex is ObjectDisposedException)
+            {
+                DeveloperDiagnostics.LogError("LiveMapPage.SetMapRenderProgressVisible", ex);
+            }
+        }
+
+        private static void CancelAndDispose(ref CancellationTokenSource? cts)
+        {
+            if (cts is null)
+            {
+                return;
+            }
+
+            try
+            {
+                cts.Cancel();
+            }
+            catch
+            {
+            }
+            finally
+            {
+                cts.Dispose();
+                cts = null;
             }
         }
 
@@ -1098,7 +1140,7 @@ namespace NOCREPORTGENERATOR.Pages
             }
         }
 
-        private string? GetSegment() => SegmentRouteFilterComboBox.SelectedItem as string ?? SegmentRouteFilterComboBox.Text;
+        private string? GetSegment() => SegmentRouteFilterAutoSuggestBox.Text;
         private string? GetSegmentPm()
         {
             var text = SegmentPmFilterAutoSuggestBox.Text?.Trim() ?? string.Empty;
@@ -2045,7 +2087,55 @@ namespace NOCREPORTGENERATOR.Pages
                 .ToList();
         }
         private async void QuickFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
-        private async void SegmentRouteFilterComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
+        private void SegmentRouteFilterAutoSuggestBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (sender is not AutoSuggestBox autoSuggest)
+            {
+                return;
+            }
+
+            autoSuggest.ItemsSource = BuildSegmentRouteSuggestions(autoSuggest.Text);
+        }
+
+        private void SegmentRouteFilterAutoSuggestBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
+            {
+                sender.ItemsSource = BuildSegmentRouteSuggestions(sender.Text);
+            }
+        }
+
+        private async void SegmentRouteFilterAutoSuggestBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
+        {
+            await ApplySmartFilterAsync();
+        }
+
+        private async void SegmentRouteFilterAutoSuggestBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+        {
+            if (args.SelectedItem is string selected && !string.IsNullOrWhiteSpace(selected))
+            {
+                sender.Text = selected;
+            }
+
+            await ApplySmartFilterAsync();
+        }
+
+        private List<string> BuildSegmentRouteSuggestions(string? text)
+        {
+            var source = _segmentRouteFilterOptions.Count == 0
+                ? new List<string> { AllSegmentOption }
+                : _segmentRouteFilterOptions;
+            var keyword = (text ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(keyword))
+            {
+                return source.Take(250).ToList();
+            }
+
+            return source
+                .Where(x => !string.IsNullOrWhiteSpace(x) && x.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                .Take(250)
+                .ToList();
+        }
         private void CompactFilterModeCheckBox_Checked(object sender, RoutedEventArgs e) => ApplyCompactFilterMode(CompactFilterModeCheckBox.IsChecked == true);
         private async void ApplyFilterButton_Click(object sender, RoutedEventArgs e) => await ApplySmartFilterAsync();
         private async void FromDatePicker_DateChanged(object sender, CalendarDatePickerDateChangedEventArgs args) { if (_suppressFilterEvents) return; await ApplySmartFilterAsync(); }
@@ -2080,7 +2170,6 @@ namespace NOCREPORTGENERATOR.Pages
 
             FromLabelTextBlock.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
             ToLabelTextBlock.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
-            ImportSegmentPmTextBlock.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
             ExportCsvTextBlock.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
 
             HeatmapLabelTextBlock.Text = compact ? "Heat" : "Heatmap";
@@ -2100,7 +2189,7 @@ namespace NOCREPORTGENERATOR.Pages
             try
             {
                 SetSmartQueryText(string.Empty);
-                SegmentRouteFilterComboBox.SelectedIndex = 0;
+                SegmentRouteFilterAutoSuggestBox.Text = AllSegmentOption;
                 SegmentPmFilterAutoSuggestBox.Text = AllSegmentPmOption;
                 QuickFilterComboBox.SelectedIndex = 0;
                 StatusFilterComboBox.SelectedIndex = 0;
@@ -2137,55 +2226,6 @@ namespace NOCREPORTGENERATOR.Pages
                 await FileIO.WriteTextAsync(file, sb.ToString());
             }
             catch (Exception ex) { DeveloperDiagnostics.LogError("LiveMapPage.ExportCsvButton_Click", ex); }
-        }
-
-        private async void ImportSegmentPmButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                if (App.MainAppWindow is null)
-                {
-                    return;
-                }
-
-                ImportSegmentPmButton.IsEnabled = false;
-                MapFilterSummaryTextBlock.Text = "Pilih file SEGMENTPM untuk diimpor...";
-
-                var picker = new FileOpenPicker();
-                picker.FileTypeFilter.Add(".xlsx");
-                picker.FileTypeFilter.Add(".xlsm");
-                picker.FileTypeFilter.Add(".xlsb");
-                picker.SuggestedStartLocation = PickerLocationId.Downloads;
-                InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(App.MainAppWindow));
-
-                var file = await picker.PickSingleFileAsync();
-                if (file is null)
-                {
-                    MapFilterSummaryTextBlock.Text = "Import SEGMENTPM dibatalkan.";
-                    return;
-                }
-
-                _segmentPmSourcePath = file.Path;
-                MapFilterSummaryTextBlock.Text = "Mengimpor SEGMENTPM ke SQL cache...";
-                var result = await SegmentPmMapService.ImportFromWorkbookAsync(filePath: file.Path, password: "no");
-                _segmentPmByRoute = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-                _segmentPmReady = false;
-                await EnsureSegmentPmFilterOptionsAsync();
-                MergeSegmentPmOptionsFromPoints(_all);
-                await LoadSiteLinksAsync();
-                await ApplySmartFilterAsync();
-                MapFilterSummaryTextBlock.Text =
-                    $"Import SEGMENTPM selesai: {result.InsertedLinks} link ({result.ProcessedRows} baris)";
-            }
-            catch (Exception ex)
-            {
-                DeveloperDiagnostics.LogError("LiveMapPage.ImportSegmentPmButton_Click", ex);
-                MapFilterSummaryTextBlock.Text = "Import SEGMENTPM gagal. Cek developer log.";
-            }
-            finally
-            {
-                ImportSegmentPmButton.IsEnabled = true;
-            }
         }
 
         private static string Esc(string value) => string.IsNullOrWhiteSpace(value) ? string.Empty : (value.Contains('"') || value.Contains(',') || value.Contains('\n') || value.Contains('\r')) ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;

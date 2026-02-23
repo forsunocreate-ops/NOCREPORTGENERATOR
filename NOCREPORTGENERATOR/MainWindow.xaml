@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <winex:WindowEx
     x:Class="NOCREPORTGENERATOR.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -439,17 +439,6 @@
                                 Orientation="Horizontal"
                                 Spacing="10"
                                 VerticalAlignment="Center">
-                                <Button
-                                    x:Name="HeaderImportButton"
-                                    Click="HeaderImportButton_Click"
-                                    Style="{StaticResource ShellSecondaryButtonStyle}"
-                                    Visibility="Collapsed">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <fluentIcons:SymbolIcon Symbol="ArrowUpload" />
-                                        <TextBlock Text="Import TT" />
-                                    </StackPanel>
-                                </Button>
-
                                 <Button
                                     x:Name="HeaderRefreshButton"
                                     Click="HeaderRefreshButton_Click"

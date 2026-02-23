@@ -208,7 +208,7 @@ namespace NOCREPORTGENERATOR.Services
             try
             {
                 return SegmentPmMapService
-                    .GetSegmentPmByRouteFromWorkbookAsync(password: "no")
+                    .GetSegmentPmByRouteAsync()
                     .GetAwaiter()
                     .GetResult();
             }
@@ -440,7 +440,7 @@ namespace NOCREPORTGENERATOR.Services
             try
             {
                 var loaded = SegmentPmMapService
-                    .GetSegmentPmOptionsFromWorkbookAsync(password: "no")
+                    .GetSegmentPmOptionsAsync()
                     .GetAwaiter()
                     .GetResult();
 

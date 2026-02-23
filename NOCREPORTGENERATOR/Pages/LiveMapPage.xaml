@@ -165,7 +165,6 @@
                                     <ColumnDefinition x:Name="PrimaryStatusColumn" Width="130" />
                                     <ColumnDefinition x:Name="PrimarySeverityColumn" Width="130" />
                                     <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock
@@ -211,20 +210,8 @@
                                     SelectionChanged="SeverityFilterComboBox_SelectionChanged" />
 
                                 <Button
-                                    x:Name="ImportSegmentPmButton"
-                                    Grid.Column="6"
-                                    Click="ImportSegmentPmButton_Click"
-                                    VerticalAlignment="Center"
-                                    Style="{StaticResource ShellSecondaryButtonStyle}">
-                                    <StackPanel Orientation="Horizontal" Spacing="6">
-                                        <fluentIcons:SymbolIcon Symbol="ArrowUpload" />
-                                        <TextBlock x:Name="ImportSegmentPmTextBlock" Text="Import SegmentPM" />
-                                    </StackPanel>
-                                </Button>
-
-                                <Button
                                     x:Name="ExportCsvButton"
-                                    Grid.Column="7"
+                                    Grid.Column="6"
                                     Click="ExportCsvButton_Click"
                                     VerticalAlignment="Center"
                                     Style="{StaticResource ShellSecondaryButtonStyle}">
@@ -334,14 +321,16 @@
                                         SuggestionChosen="SmartFilterAutoSuggestBox_SuggestionChosen"
                                         TextChanged="SmartFilterAutoSuggestBox_TextChanged" />
 
-                                    <ComboBox
-                                        x:Name="SegmentRouteFilterComboBox"
+                                    <AutoSuggestBox
+                                        x:Name="SegmentRouteFilterAutoSuggestBox"
                                         Grid.Column="1"
-                                        IsEditable="True"
-                                        IsTextSearchEnabled="True"
                                         PlaceholderText="Segment Route"
-                                        Style="{StaticResource ShellInputComboBoxStyle}"
-                                        SelectionChanged="SegmentRouteFilterComboBox_SelectionChanged" />
+                                        QueryIcon="Find"
+                                        Style="{StaticResource ShellInputAutoSuggestBoxStyle}"
+                                        GotFocus="SegmentRouteFilterAutoSuggestBox_GotFocus"
+                                        QuerySubmitted="SegmentRouteFilterAutoSuggestBox_QuerySubmitted"
+                                        SuggestionChosen="SegmentRouteFilterAutoSuggestBox_SuggestionChosen"
+                                        TextChanged="SegmentRouteFilterAutoSuggestBox_TextChanged" />
 
                                     <AutoSuggestBox
                                         x:Name="SegmentPmFilterAutoSuggestBox"

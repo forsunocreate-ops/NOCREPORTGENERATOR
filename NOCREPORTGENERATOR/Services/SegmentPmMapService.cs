@@ -39,9 +39,7 @@ namespace NOCREPORTGENERATOR.Services
         private static readonly string[] LonBPrefixes = { "longb", "lngb", "longitudeb", "lonb" };
         private static readonly string[] LatBPrefixes = { "latb", "latitudeb" };
         private static readonly SemaphoreSlim DbGate = new(1, 1);
-        private static readonly string DirectoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NOCREPORTGENERATOR");
+        private static readonly string DirectoryPath = PortableDataPaths.DataDirectoryPath;
         private static readonly string DbPath = Path.Combine(DirectoryPath, "segmentpm_map.db");
         private static readonly string ConnectionString = "Data Source=" + DbPath + ";Cache=Shared;Pooling=True";
         private static bool _initialized;
@@ -173,6 +171,92 @@ namespace NOCREPORTGENERATOR.Services
                 }
 
                 return list;
+            }
+            finally
+            {
+                DbGate.Release();
+            }
+        }
+
+        public static async Task<IReadOnlyList<string>> GetSegmentPmOptionsAsync()
+        {
+            await EnsureInitializedAsync();
+            await DbGate.WaitAsync();
+            try
+            {
+                var list = new List<string>();
+                using var connection = new SqliteConnection(ConnectionString);
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText =
+                    "SELECT DISTINCT segment_pm FROM segmentpm_links " +
+                    "WHERE segment_pm IS NOT NULL AND TRIM(segment_pm) <> '' " +
+                    "ORDER BY segment_pm COLLATE NOCASE;";
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    if (r.IsDBNull(0))
+                    {
+                        continue;
+                    }
+
+                    var value = r.GetString(0).Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        list.Add(value);
+                    }
+                }
+
+                return list;
+            }
+            finally
+            {
+                DbGate.Release();
+            }
+        }
+
+        public static async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetSegmentPmByRouteAsync()
+        {
+            await EnsureInitializedAsync();
+            await DbGate.WaitAsync();
+            try
+            {
+                var map = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+                using var connection = new SqliteConnection(ConnectionString);
+                connection.Open();
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText =
+                    "SELECT route_segment, segment_pm FROM segmentpm_links " +
+                    "WHERE route_segment IS NOT NULL AND TRIM(route_segment) <> '' " +
+                    "AND segment_pm IS NOT NULL AND TRIM(segment_pm) <> '';";
+                using var r = cmd.ExecuteReader();
+                while (r.Read())
+                {
+                    if (r.IsDBNull(0) || r.IsDBNull(1))
+                    {
+                        continue;
+                    }
+
+                    var route = r.GetString(0).Trim();
+                    var segmentPm = r.GetString(1).Trim();
+                    if (string.IsNullOrWhiteSpace(route) || string.IsNullOrWhiteSpace(segmentPm))
+                    {
+                        continue;
+                    }
+
+                    if (!map.TryGetValue(route, out var values))
+                    {
+                        values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        map[route] = values;
+                    }
+
+                    values.Add(segmentPm);
+                }
+
+                return map.ToDictionary(
+                    x => x.Key,
+                    x => (IReadOnlyList<string>)x.Value.OrderBy(v => v, StringComparer.OrdinalIgnoreCase).ToList(),
+                    StringComparer.OrdinalIgnoreCase);
             }
             finally
             {
@@ -344,10 +428,11 @@ namespace NOCREPORTGENERATOR.Services
                 insert.Transaction = tx;
                 insert.CommandText =
                     "INSERT INTO segmentpm_links " +
-                    "(route_segment, unique_id, site_a_id, site_a_name, lat_a, lon_a, site_b_id, site_b_name, lat_b, lon_b, source_sheet, source_row) " +
-                    "VALUES ($route_segment, $unique_id, $site_a_id, $site_a_name, $lat_a, $lon_a, $site_b_id, $site_b_name, $lat_b, $lon_b, $source_sheet, $source_row);";
+                    "(route_segment, segment_pm, unique_id, site_a_id, site_a_name, lat_a, lon_a, site_b_id, site_b_name, lat_b, lon_b, source_sheet, source_row) " +
+                    "VALUES ($route_segment, $segment_pm, $unique_id, $site_a_id, $site_a_name, $lat_a, $lon_a, $site_b_id, $site_b_name, $lat_b, $lon_b, $source_sheet, $source_row);";
 
                 var pRoute = insert.CreateParameter(); pRoute.ParameterName = "$route_segment"; insert.Parameters.Add(pRoute);
+                var pSegmentPm = insert.CreateParameter(); pSegmentPm.ParameterName = "$segment_pm"; insert.Parameters.Add(pSegmentPm);
                 var pUid = insert.CreateParameter(); pUid.ParameterName = "$unique_id"; insert.Parameters.Add(pUid);
                 var pA = insert.CreateParameter(); pA.ParameterName = "$site_a_id"; insert.Parameters.Add(pA);
                 var pAName = insert.CreateParameter(); pAName.ParameterName = "$site_a_name"; insert.Parameters.Add(pAName);
@@ -364,6 +449,7 @@ namespace NOCREPORTGENERATOR.Services
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     pRoute.Value = link.RouteSegment;
+                    pSegmentPm.Value = link.SegmentPm;
                     pUid.Value = link.UniqueId;
                     pA.Value = link.SiteAId;
                     pAName.Value = link.SiteAName;
@@ -545,6 +631,8 @@ namespace NOCREPORTGENERATOR.Services
                 yield break;
             }
 
+            var segmentPm = row.Length > 7 ? row[7]?.Trim() ?? string.Empty : string.Empty;
+
             var uniqueId = FirstNonEmpty(row, FindFirstIndexByPrefixes(map, UniqueIdPrefixes));
 
             var siteAIds = FindIndicesByPrefixes(map, SiteAIdPrefixes);
@@ -594,6 +682,7 @@ namespace NOCREPORTGENERATOR.Services
                 yield return new SegmentLinkRecord
                 {
                     RouteSegment = route,
+                    SegmentPm = segmentPm,
                     UniqueId = uniqueId,
                     SiteAId = siteAId,
                     SiteAName = siteAName,
@@ -744,6 +833,7 @@ namespace NOCREPORTGENERATOR.Services
                     "CREATE TABLE IF NOT EXISTS segmentpm_links (" +
                     "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
                     "route_segment TEXT NOT NULL, " +
+                    "segment_pm TEXT, " +
                     "unique_id TEXT, " +
                     "site_a_id TEXT, " +
                     "site_a_name TEXT, " +
@@ -762,12 +852,35 @@ namespace NOCREPORTGENERATOR.Services
                     "source_path TEXT, imported_at TEXT, total_links INTEGER" +
                     ");";
                 cmd.ExecuteNonQuery();
+                EnsureColumnExists(connection, "segmentpm_links", "segment_pm", "TEXT");
                 _initialized = true;
             }
             finally
             {
                 DbGate.Release();
             }
+        }
+
+        private static void EnsureColumnExists(SqliteConnection connection, string tableName, string columnName, string columnSqlType)
+        {
+            using var check = connection.CreateCommand();
+            check.CommandText = "PRAGMA table_info(" + tableName + ");";
+            using var reader = check.ExecuteReader();
+            while (reader.Read())
+            {
+                if (!reader.IsDBNull(1))
+                {
+                    var existingName = reader.GetString(1);
+                    if (string.Equals(existingName, columnName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return;
+                    }
+                }
+            }
+
+            using var alter = connection.CreateCommand();
+            alter.CommandText = "ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + columnSqlType + ";";
+            alter.ExecuteNonQuery();
         }
 
         private sealed class ParsedImportLinks
@@ -809,6 +922,7 @@ namespace NOCREPORTGENERATOR.Services
         private sealed class SegmentLinkRecord
         {
             public string RouteSegment { get; set; } = string.Empty;
+            public string SegmentPm { get; set; } = string.Empty;
             public string UniqueId { get; set; } = string.Empty;
             public string SiteAId { get; set; } = string.Empty;
             public string SiteAName { get; set; } = string.Empty;
@@ -822,7 +936,7 @@ namespace NOCREPORTGENERATOR.Services
             public int SourceRow { get; set; }
 
             public string DedupKey =>
-                RouteSegment + "|" + UniqueId + "|" + SiteAId + "|" + SiteBId + "|" +
+                RouteSegment + "|" + SegmentPm + "|" + UniqueId + "|" + SiteAId + "|" + SiteBId + "|" +
                 LatitudeA.ToString("0.######", CultureInfo.InvariantCulture) + "|" +
                 LongitudeA.ToString("0.######", CultureInfo.InvariantCulture) + "|" +
                 LatitudeB.ToString("0.######", CultureInfo.InvariantCulture) + "|" +

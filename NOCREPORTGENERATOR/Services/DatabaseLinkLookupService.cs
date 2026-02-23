@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace NOCREPORTGENERATOR.Services
@@ -12,7 +13,6 @@ namespace NOCREPORTGENERATOR.Services
     public static class DatabaseLinkLookupService
     {
         private const string DefaultDatabaseLinkPath = @"E:\PROJECT VS\NOCREPORTGENERATOR\NOCREPORTGENERATOR\DATABASE_LINK.xlsb";
-        private const string LookupCacheDbFileName = "database_link_cache.db";
         private static readonly object Sync = new();
         private static Task<LookupCache>? _cacheTask;
 
@@ -137,6 +137,50 @@ namespace NOCREPORTGENERATOR.Services
 
         public static async Task RefreshCacheAsync()
         {
+            await Task.Run(TryRefreshSqliteCacheFromSource);
+
+            lock (Sync)
+            {
+                _cacheTask = null;
+            }
+
+            await GetCacheAsync();
+        }
+
+        public static async Task RefreshCacheFromSourceAsync(string sourcePath)
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+            {
+                throw new FileNotFoundException("File DATABASE_LINK tidak ditemukan.", sourcePath);
+            }
+
+            await Task.Run(() =>
+            {
+                var fullPath = Path.GetFullPath(sourcePath);
+                Exception? lastError = null;
+                for (var attempt = 1; attempt <= 3; attempt++)
+                {
+                    try
+                    {
+                        EnsureSqlCacheUpToDate(fullPath);
+                        lastError = null;
+                        break;
+                    }
+                    catch (IOException ex)
+                    {
+                        lastError = ex;
+                        Thread.Sleep(200 * attempt);
+                    }
+                }
+
+                if (lastError is not null)
+                {
+                    throw lastError;
+                }
+
+                DeveloperDiagnostics.LogInfo("DATABASE_LINK cache SQLite direfresh dari file manual: " + fullPath);
+            });
+
             lock (Sync)
             {
                 _cacheTask = null;
@@ -147,14 +191,39 @@ namespace NOCREPORTGENERATOR.Services
 
         private static LookupCache LoadCache()
         {
-            var sourcePath = ResolveDatabasePath();
-            if (sourcePath is null)
-            {
-                throw new FileNotFoundException("DATABASE_LINK.xlsb tidak ditemukan.");
-            }
-
-            EnsureSqlCacheUpToDate(sourcePath);
+            EnsureSqliteCacheExists();
             return LoadCacheFromSqlite();
+        }
+
+        private static void TryRefreshSqliteCacheFromSource()
+        {
+            try
+            {
+                var sourcePath = ResolveDatabasePath();
+                if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+                {
+                    DeveloperDiagnostics.LogInfo("DATABASE_LINK source file tidak ditemukan. Menggunakan cache SQLite yang ada.");
+                    EnsureSqliteCacheExists();
+                    return;
+                }
+
+                EnsureSqlCacheUpToDate(sourcePath);
+                DeveloperDiagnostics.LogInfo("DATABASE_LINK cache SQLite berhasil direfresh dari file sumber.");
+            }
+            catch (Exception ex)
+            {
+                DeveloperDiagnostics.LogError("DatabaseLinkLookupService.TryRefreshSqliteCacheFromSource", ex);
+                EnsureSqliteCacheExists();
+            }
+        }
+
+        private static void EnsureSqliteCacheExists()
+        {
+            var cacheDbPath = ResolveSqliteCachePath();
+            Directory.CreateDirectory(Path.GetDirectoryName(cacheDbPath) ?? AppContext.BaseDirectory);
+            using var connection = new SqliteConnection("Data Source=" + cacheDbPath);
+            connection.Open();
+            EnsureSchema(connection);
         }
 
         private static void EnsureSqlCacheUpToDate(string sourcePath)
@@ -227,16 +296,27 @@ namespace NOCREPORTGENERATOR.Services
                 throw new InvalidDataException("Kolom 'System Key' atau 'Segment Route' tidak ditemukan pada sheet 'FOA Active'.");
             }
 
-            if (File.Exists(cacheDbPath))
-            {
-                File.Delete(cacheDbPath);
-            }
-
             using var connection = new SqliteConnection("Data Source=" + cacheDbPath);
             connection.Open();
+            using (var busy = connection.CreateCommand())
+            {
+                busy.CommandText = "PRAGMA busy_timeout=8000;";
+                busy.ExecuteNonQuery();
+            }
             EnsureSchema(connection);
 
             using var transaction = connection.BeginTransaction();
+            using (var clear = connection.CreateCommand())
+            {
+                clear.Transaction = transaction;
+                clear.CommandText =
+                    "DELETE FROM system_segment;" +
+                    "DELETE FROM system_pic;" +
+                    "DELETE FROM segment_pic;" +
+                    "DELETE FROM all_pic;" +
+                    "DELETE FROM metadata;";
+                clear.ExecuteNonQuery();
+            }
             using var insertSystemSegment = connection.CreateCommand();
             insertSystemSegment.Transaction = transaction;
             insertSystemSegment.CommandText =
@@ -442,10 +522,7 @@ namespace NOCREPORTGENERATOR.Services
 
         private static string ResolveSqliteCachePath()
         {
-            var localDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "NOCREPORTGENERATOR");
-            return Path.Combine(localDir, LookupCacheDbFileName);
+            return PortableDataPaths.DatabaseLinkCacheDbPath;
         }
 
         private static void EnsureSchema(SqliteConnection connection)

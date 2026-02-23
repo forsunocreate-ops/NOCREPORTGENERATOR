@@ -15,9 +15,7 @@ namespace NOCREPORTGENERATOR.Services
     {
         private static readonly SemaphoreSlim DbGate = new(1, 1);
         private static readonly object CacheGate = new();
-        private static readonly string DirectoryPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NOCREPORTGENERATOR");
+        private static readonly string DirectoryPath = PortableDataPaths.DataDirectoryPath;
         private static readonly string DbPath = Path.Combine(DirectoryPath, "tt_forms.db");
         private static readonly string LegacyJsonPath = Path.Combine(DirectoryPath, "tt_forms.json");
         private static readonly string ConnectionString = "Data Source=" + DbPath + ";Cache=Shared;Pooling=True";

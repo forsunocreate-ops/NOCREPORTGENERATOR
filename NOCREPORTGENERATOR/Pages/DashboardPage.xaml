@@ -16,8 +16,95 @@
         </TransitionCollection>
     </Page.Transitions>
 
+    <Page.Resources>
+        <LinearGradientBrush x:Key="DashboardHeroSurfaceBrush" EndPoint="1,1" StartPoint="0,0">
+            <GradientStop Color="#FF00231B" Offset="0" />
+            <GradientStop Color="#FF005049" Offset="0.58" />
+            <GradientStop Color="#FF135773" Offset="1" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="DashboardHeroChipBrush" EndPoint="1,1" StartPoint="0,0">
+            <GradientStop Color="#24FFFFFF" Offset="0" />
+            <GradientStop Color="#0FFFFFFF" Offset="1" />
+        </LinearGradientBrush>
+
+        <LinearGradientBrush x:Key="DashboardSubtleCardBrush" EndPoint="1,1" StartPoint="0,0">
+            <GradientStop Color="#FFFFFFFF" Offset="0" />
+            <GradientStop Color="#FFBAFFFD" Offset="1" />
+        </LinearGradientBrush>
+
+        <SolidColorBrush x:Key="DashboardHeroChipBorderBrush" Color="#45FFFFFF" />
+        <SolidColorBrush x:Key="DashboardSubtleCardBorderBrush" Color="#FF9ED7D2" />
+        <SolidColorBrush x:Key="DashboardSectionLabelBrush" Color="#FF4A6078" />
+        <SolidColorBrush x:Key="DashboardEmphasisBrush" Color="#FF0E1A26" />
+        <SolidColorBrush x:Key="DashboardPositiveBrush" Color="#FF1C8E5A" />
+        <SolidColorBrush x:Key="DashboardRiskBrush" Color="#FFD88419" />
+        <SolidColorBrush x:Key="DashboardCriticalBrush" Color="#FFD64656" />
+
+        <Style x:Key="DashboardHeroCardStyle" TargetType="Border" BasedOn="{StaticResource ShellPageHeaderCardStyle}">
+            <Setter Property="Padding" Value="26" />
+            <Setter Property="CornerRadius" Value="22" />
+            <Setter Property="Background" Value="{StaticResource DashboardHeroSurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="#66619C97" />
+        </Style>
+
+        <Style x:Key="DashboardHeroChipStyle" TargetType="Border">
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Background" Value="{StaticResource DashboardHeroChipBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DashboardHeroChipBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="999" />
+        </Style>
+
+        <Style x:Key="DashboardSectionCardStyle" TargetType="Border" BasedOn="{StaticResource ShellGlassCardStyle}">
+            <Setter Property="Padding" Value="20" />
+            <Setter Property="CornerRadius" Value="20" />
+        </Style>
+
+        <Style x:Key="DashboardSubtleCardStyle" TargetType="Border" BasedOn="{StaticResource ShellGlassSubtleCardStyle}">
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Background" Value="{StaticResource DashboardSubtleCardBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource DashboardSubtleCardBorderBrush}" />
+        </Style>
+
+        <Style x:Key="DashboardSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource ShellSectionTitleStyle}">
+            <Setter Property="FontSize" Value="21" />
+            <Setter Property="Foreground" Value="{StaticResource DashboardEmphasisBrush}" />
+        </Style>
+
+        <Style x:Key="DashboardSectionCaptionStyle" TargetType="TextBlock" BasedOn="{StaticResource ShellSectionCaptionStyle}">
+            <Setter Property="Foreground" Value="{StaticResource DashboardSectionLabelBrush}" />
+        </Style>
+
+        <Style x:Key="DashboardMetricLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource DashboardSectionLabelBrush}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+
+        <Style x:Key="DashboardMetricValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="30" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource DashboardEmphasisBrush}" />
+        </Style>
+
+        <Style x:Key="DashboardListViewStyle" TargetType="ListView">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinHeight" Value="180" />
+        </Style>
+    </Page.Resources>
+
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <Grid x:Name="DashboardRootGrid" Padding="20" RowSpacing="16">
+        <Grid
+            x:Name="DashboardRootGrid"
+            Padding="22"
+            HorizontalAlignment="Center"
+            MaxWidth="1820"
+            RowSpacing="18">
             <Grid.ChildrenTransitions>
                 <TransitionCollection>
                     <EntranceThemeTransition FromVerticalOffset="16" IsStaggeringEnabled="True" />
@@ -36,38 +123,109 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Grid.Row="0" Style="{StaticResource ShellPageHeaderCardStyle}">
-                <Grid ColumnSpacing="12">
+            <Border Grid.Row="0" Style="{StaticResource DashboardHeroCardStyle}">
+                <Grid ColumnSpacing="16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="260" />
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Spacing="6">
+                    <StackPanel Spacing="10">
                         <TextBlock Foreground="{StaticResource ShellHeroCaptionTextBrush}" Text="Advanced NOC Console" />
                         <TextBlock
                             Style="{StaticResource ShellHeroTitleTextStyle}"
-                            Text="TT Performance Dashboard v2" />
+                            Text="Operational Intelligence Board" />
                         <TextBlock
                             Foreground="{StaticResource ShellHeroSecondaryTextBrush}"
-                            Text="KPI eksekutif, SLA risk analytics, workload, root cause intelligence, dan queue prioritas." />
+                            Text="Realtime KPI, SLA pressure, workload distribution, root cause signals, dan critical queue dalam satu tampilan." />
+
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <Border Style="{StaticResource DashboardHeroChipStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fluentIcons:SymbolIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Symbol="DataHistogram" />
+                                        <TextBlock Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Realtime KPI" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource DashboardHeroChipStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fluentIcons:SymbolIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Symbol="Alert" />
+                                        <TextBlock Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="SLA Early Warning" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource DashboardHeroChipStyle}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <fluentIcons:SymbolIcon Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Symbol="TaskList" />
+                                        <TextBlock Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Priority Queue" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
                     </StackPanel>
 
-                    <Border
-                        x:Name="DashboardHeroVisualHost"
+                    <Grid
                         Grid.Column="1"
-                        Width="66"
-                        Height="66"
-                        Background="{StaticResource ShellWorkspaceBadgeBackgroundBrush}"
-                        BorderBrush="{StaticResource ShellWorkspaceBadgeBorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="33" />
+                        Width="250"
+                        Height="120"
+                        Margin="4,0,0,0"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center">
+                        <Ellipse
+                            Width="110"
+                            Height="110"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Fill="#2AFFFFFF" />
+                        <Ellipse
+                            Width="78"
+                            Height="78"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            Fill="#33FFFFFF" />
+                        <Border
+                            x:Name="DashboardHeroVisualHost"
+                            Width="72"
+                            Height="72"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource ShellWorkspaceBadgeBackgroundBrush}"
+                            BorderBrush="{StaticResource ShellWorkspaceBadgeBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="36" />
+                        <StackPanel
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Top"
+                            Spacing="4">
+                            <Border Style="{StaticResource DashboardHeroChipStyle}">
+                                <TextBlock Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Coverage: 24/7" />
+                            </Border>
+                            <Border Style="{StaticResource DashboardHeroChipStyle}">
+                                <TextBlock Foreground="{StaticResource ShellHeroPrimaryTextBrush}" Text="Mode: Production" />
+                            </Border>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Border>
 
-            <Border Grid.Row="1" Style="{StaticResource ShellGlassCardStyle}">
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <Grid ColumnSpacing="12" RowSpacing="12" MinWidth="1280">
+            <Border Grid.Row="1" Style="{StaticResource DashboardSectionCardStyle}">
+                <StackPanel Spacing="12">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Executive KPI Deck" />
+                        <Border
+                            Padding="10,4"
+                            Background="#1438A291"
+                            BorderBrush="#5538A291"
+                            BorderThickness="1"
+                            CornerRadius="999">
+                            <TextBlock Foreground="{StaticResource DashboardEmphasisBrush}" Text="Live" />
+                        </Border>
+                    </StackPanel>
+                    <TextBlock
+                        Style="{StaticResource DashboardSectionCaptionStyle}"
+                        Text="Ringkasan metrik utama untuk keputusan operasional cepat pada shift saat ini." />
+
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <Grid ColumnSpacing="12" RowSpacing="12" MinWidth="1320">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="*" />
@@ -81,111 +239,112 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="TT Baru Hari Ini" />
-                                <TextBlock x:Name="TotalTodayTextBlock" FontSize="28" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="TT Baru Hari Ini" />
+                                <TextBlock x:Name="TotalTodayTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="28" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Open Total" />
-                                <TextBlock x:Name="OpenAllTextBlock" FontSize="28" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Open Total" />
+                                <TextBlock x:Name="OpenAllTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="28" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" Grid.Row="0" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="2" Grid.Row="0" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Open Critical" />
-                                <TextBlock x:Name="OpenCriticalTextBlock" FontSize="28" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Open Critical" />
+                                <TextBlock x:Name="OpenCriticalTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource DashboardCriticalBrush}" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="3" Grid.Row="0" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="3" Grid.Row="0" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Open Major" />
-                                <TextBlock x:Name="OpenMajorTextBlock" FontSize="28" FontWeight="SemiBold" Text="0" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="0" Grid.Row="1" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                            <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Open Minor/Other" />
-                                <TextBlock x:Name="OpenMinorTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                            <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Closed" />
-                                <TextBlock x:Name="ClosedTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="2" Grid.Row="1" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                            <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Cancel" />
-                                <TextBlock x:Name="CancelTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
-                            </StackPanel>
-                        </Border>
-                        <Border Grid.Column="3" Grid.Row="1" Style="{StaticResource ShellGlassSubtleCardStyle}">
-                            <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Draft Lokal" />
-                                <TextBlock x:Name="DraftLocalTextBlock" FontSize="24" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Open Major" />
+                                <TextBlock x:Name="OpenMajorTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource DashboardRiskBrush}" Text="0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="0" Grid.Row="2" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="0" Grid.Row="1" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="MTTA (menit)" />
-                                <TextBlock x:Name="MttaTextBlock" FontSize="22" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Open Minor/Other" />
+                                <TextBlock x:Name="OpenMinorTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="24" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Grid.Row="2" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="MTTR (menit)" />
-                                <TextBlock x:Name="MttrTextBlock" FontSize="22" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Closed" />
+                                <TextBlock x:Name="ClosedTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="24" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" Grid.Row="2" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="2" Grid.Row="1" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="SLA Compliance" />
-                                <TextBlock x:Name="SlaComplianceTextBlock" FontSize="22" FontWeight="SemiBold" Text="0%" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Cancel" />
+                                <TextBlock x:Name="CancelTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="24" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="3" Grid.Row="2" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="3" Grid.Row="1" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Repeat Incident" />
-                                <TextBlock x:Name="RepeatIncidentTextBlock" FontSize="22" FontWeight="SemiBold" Text="0%" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Draft Lokal" />
+                                <TextBlock x:Name="DraftLocalTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="24" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Column="0" Grid.Row="3" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="0" Grid.Row="2" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Backlog &gt; 24 Jam" />
-                                <TextBlock x:Name="Aging24hTextBlock" FontSize="20" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="MTTA (menit)" />
+                                <TextBlock x:Name="MttaTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="22" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="1" Grid.Row="3" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="1" Grid.Row="2" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Backlog &gt; 72 Jam" />
-                                <TextBlock x:Name="Aging72hTextBlock" FontSize="20" FontWeight="SemiBold" Text="0" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="MTTR (menit)" />
+                                <TextBlock x:Name="MttrTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="22" FontWeight="SemiBold" Text="0" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" Grid.Row="3" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="2" Grid.Row="2" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Forecast Besok" />
-                                <TextBlock x:Name="ForecastTextBlock" FontSize="20" FontWeight="SemiBold" Text="0 TT" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="SLA Compliance" />
+                                <TextBlock x:Name="SlaComplianceTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource DashboardPositiveBrush}" Text="0%" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="3" Grid.Row="3" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                        <Border Grid.Column="3" Grid.Row="2" Style="{StaticResource DashboardSubtleCardStyle}">
                             <StackPanel Spacing="4">
-                                <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="Anomali Hari Ini" />
-                                <TextBlock x:Name="AnomalyTextBlock" FontSize="20" FontWeight="SemiBold" Text="Normal" />
-                                <TextBlock x:Name="DataFreshnessTextBlock" Style="{StaticResource ShellSectionCaptionStyle}" Text="Data freshness: -" />
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Repeat Incident" />
+                                <TextBlock x:Name="RepeatIncidentTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="22" FontWeight="SemiBold" Text="0%" />
                             </StackPanel>
                         </Border>
-                    </Grid>
-                </ScrollViewer>
+
+                        <Border Grid.Column="0" Grid.Row="3" Style="{StaticResource DashboardSubtleCardStyle}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Backlog &gt; 24 Jam" />
+                                <TextBlock x:Name="Aging24hTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="20" FontWeight="SemiBold" Text="0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Grid.Row="3" Style="{StaticResource DashboardSubtleCardStyle}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Backlog &gt; 72 Jam" />
+                                <TextBlock x:Name="Aging72hTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="20" FontWeight="SemiBold" Text="0" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Grid.Row="3" Style="{StaticResource DashboardSubtleCardStyle}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Forecast Besok" />
+                                <TextBlock x:Name="ForecastTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="20" FontWeight="SemiBold" Text="0 TT" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="3" Grid.Row="3" Style="{StaticResource DashboardSubtleCardStyle}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Style="{StaticResource DashboardMetricLabelStyle}" Text="Anomali Hari Ini" />
+                                <TextBlock x:Name="AnomalyTextBlock" Style="{StaticResource DashboardMetricValueStyle}" FontSize="20" FontWeight="SemiBold" Text="Normal" />
+                                <TextBlock x:Name="DataFreshnessTextBlock" Style="{StaticResource DashboardSectionCaptionStyle}" Text="Data freshness: -" />
+                            </StackPanel>
+                        </Border>
+                        </Grid>
+                    </ScrollViewer>
+                </StackPanel>
             </Border>
 
-            <Border Grid.Row="2" Style="{StaticResource ShellGlassCardStyle}">
+            <Border Grid.Row="2" Style="{StaticResource DashboardSectionCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" MinWidth="980">
                         <Grid.ColumnDefinitions>
@@ -194,9 +353,9 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Trend Volume TT (7 Hari)" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Pergerakan volume harian + baseline untuk monitoring lonjakan." />
-                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Trend Volume TT (7 Hari)" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Pergerakan volume harian + baseline untuk monitoring lonjakan." />
+                            <Border Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="250"
                                     LegendPosition="Top"
@@ -207,9 +366,9 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Status Mix" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Distribusi Open / Closed / Cancel." />
-                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Status Mix" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Distribusi Open / Closed / Cancel." />
+                            <Border Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                 <lvc:PieChart
                                     Height="250"
                                     LegendPosition="Bottom"
@@ -220,7 +379,7 @@
                 </ScrollViewer>
             </Border>
 
-            <Border Grid.Row="3" Style="{StaticResource ShellGlassCardStyle}">
+            <Border Grid.Row="3" Style="{StaticResource DashboardSectionCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" MinWidth="980">
                         <Grid.ColumnDefinitions>
@@ -229,9 +388,9 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="SLA Risk" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="On-track, at-risk, dan breached untuk ticket Open." />
-                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="SLA Risk" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="On-track, at-risk, dan breached untuk ticket Open." />
+                            <Border Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                 <lvc:PieChart
                                     Height="250"
                                     LegendPosition="Bottom"
@@ -240,9 +399,9 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Workload PIC (Top 8)" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Jumlah TT Open per PIC untuk distribusi beban kerja." />
-                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Workload PIC (Top 8)" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Jumlah TT Open per PIC untuk distribusi beban kerja." />
+                            <Border Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="250"
                                     LegendPosition="Hidden"
@@ -255,7 +414,7 @@
                 </ScrollViewer>
             </Border>
 
-            <Border Grid.Row="4" Style="{StaticResource ShellGlassCardStyle}">
+            <Border Grid.Row="4" Style="{StaticResource DashboardSectionCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" MinWidth="1280">
                         <Grid.ColumnDefinitions>
@@ -265,9 +424,9 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Root Cause Intelligence (Top 8)" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Kontributor masalah terbesar untuk analisis Pareto." />
-                            <Border Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Root Cause Intelligence (Top 8)" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Kontributor masalah terbesar untuk analisis Pareto." />
+                            <Border Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                 <lvc:CartesianChart
                                     Height="240"
                                     LegendPosition="Hidden"
@@ -278,12 +437,12 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Top Impacted Segment" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Segment route paling sering terdampak." />
-                            <ListView x:Name="TopSegmentListView" MinHeight="250">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Top Impacted Segment" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Segment route paling sering terdampak." />
+                            <ListView x:Name="TopSegmentListView" MinHeight="250" Style="{StaticResource DashboardListViewStyle}">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                             <Grid ColumnSpacing="8">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*" />
@@ -299,12 +458,12 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Priority Queue" />
-                            <TextBlock Style="{StaticResource ShellSectionCaptionStyle}" Text="Critical queue berdasarkan severity, aging, dan SLA state." />
-                            <ListView x:Name="PriorityQueueListView" MinHeight="250">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Priority Queue" />
+                            <TextBlock Style="{StaticResource DashboardSectionCaptionStyle}" Text="Critical queue berdasarkan severity, aging, dan SLA state." />
+                            <ListView x:Name="PriorityQueueListView" MinHeight="250" Style="{StaticResource DashboardListViewStyle}">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                                        <Border Margin="0,0,0,8" Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                                             <StackPanel Spacing="2">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding Ticket}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock Foreground="{StaticResource ShellMutedForegroundBrush}" Text="{Binding Segment}" TextTrimming="CharacterEllipsis" />
@@ -319,25 +478,25 @@
                 </ScrollViewer>
             </Border>
 
-            <Border Grid.Row="5" Style="{StaticResource ShellGlassCardStyle}">
+            <Border Grid.Row="5" Style="{StaticResource DashboardSectionCardStyle}">
                 <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <Border Grid.Column="0" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                    <Border Grid.Column="0" Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                         <StackPanel Spacing="6">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Data Quality" />
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Data Quality" />
                             <TextBlock x:Name="MissingSystemKeyTextBlock" Text="Missing System Key: 0 (0%)" />
                             <TextBlock x:Name="MissingSegmentTextBlock" Text="Missing Segment Route: 0 (0%)" />
                             <TextBlock x:Name="MissingPicTextBlock" Text="Missing PIC: 0 (0%)" />
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Column="1" Padding="12" Style="{StaticResource ShellGlassSubtleCardStyle}">
+                    <Border Grid.Column="1" Padding="12" Style="{StaticResource DashboardSubtleCardStyle}">
                         <StackPanel Spacing="8">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Import Pipeline Monitor" />
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Import Pipeline Monitor" />
                             <TextBlock x:Name="ImportStateTextBlock" Text="Idle" />
                             <ProgressBar x:Name="ImportProgressBar" Height="6" Minimum="0" Maximum="100" Value="0" />
                         </StackPanel>
@@ -345,7 +504,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="6" Style="{StaticResource ShellGlassCardStyle}">
+            <Border Grid.Row="6" Style="{StaticResource DashboardSectionCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" RowSpacing="12" MinWidth="920">
                         <Grid.ColumnDefinitions>
@@ -360,13 +519,16 @@
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock
+                        <StackPanel
                             Grid.Column="0"
                             Grid.ColumnSpan="5"
                             Margin="2,0,0,2"
-                            Foreground="{StaticResource ShellMutedForegroundBrush}"
-                            Style="{StaticResource ShellSectionCaptionStyle}"
-                            Text="Search &amp; Filter" />
+                            Spacing="2">
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Search &amp; Filter" />
+                            <TextBlock
+                                Style="{StaticResource DashboardSectionCaptionStyle}"
+                                Text="Filter cepat untuk fokus ke ticket dengan prioritas tertinggi." />
+                        </StackPanel>
 
                         <TextBox
                             x:Name="SearchTextBox"
@@ -425,7 +587,7 @@
                 x:Name="DashboardHistorySectionBorder"
                 Grid.Row="7"
                 Visibility="Collapsed"
-                Style="{StaticResource ShellGlassCardStyle}">
+                Style="{StaticResource DashboardSectionCardStyle}">
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                     <Grid ColumnSpacing="12" MinWidth="1120">
                         <Grid.ColumnDefinitions>
@@ -434,21 +596,22 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Spacing="10">
-                            <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="History TT" />
+                            <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="History TT" />
                             <TextBlock
                                 x:Name="HistoryCountTextBlock"
-                                Style="{StaticResource ShellSectionCaptionStyle}"
+                                Style="{StaticResource DashboardSectionCaptionStyle}"
                                 Text="0 item" />
                             <ListView
                                 x:Name="HistoryListView"
                                 MinHeight="420"
+                                Style="{StaticResource DashboardListViewStyle}"
                                 SelectionChanged="HistoryListView_SelectionChanged">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
                                         <Border
                                             Margin="0,0,0,8"
                                             Padding="12"
-                                            Style="{StaticResource ShellGlassSubtleCardStyle}">
+                                            Style="{StaticResource DashboardSubtleCardStyle}">
                                             <StackPanel Spacing="4">
                                                 <TextBlock FontWeight="SemiBold" Text="{Binding HeaderText}" TextTrimming="CharacterEllipsis" />
                                                 <TextBlock
@@ -465,7 +628,7 @@
 
                         <StackPanel Grid.Column="1" Spacing="10">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBlock Style="{StaticResource ShellSectionTitleStyle}" Text="Detail TT" />
+                                <TextBlock Style="{StaticResource DashboardSectionTitleStyle}" Text="Detail TT" />
                                 <TextBlock
                                     x:Name="SelectedBadgeTextBlock"
                                     VerticalAlignment="Center"
